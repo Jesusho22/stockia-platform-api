@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="InventoryItemNotFound" xml:space="preserve">
+    <value>Insumo no encontrado.</value>
+  </data>
+  <data name="RecipeNotFound" xml:space="preserve">
+    <value>Receta no encontrada.</value>
+  </data>
+  <data name="IngredientNotFound" xml:space="preserve">
+    <value>El insumo {0} de la receta no existe.</value>
+  </data>
+  <data name="InvalidData" xml:space="preserve">
+    <value>Los datos no son válidos.</value>
+  </data>
+  <data name="InsufficientStock" xml:space="preserve">
+    <value>No hay stock utilizable suficiente.</value>
+  </data>
+  <data name="RecipeIncomplete" xml:space="preserve">
+    <value>La receta necesita el nombre del plato y al menos un ingrediente.</value>
+  </data>
+  <data name="IngredientQuantity" xml:space="preserve">
+    <value>Cada ingrediente necesita una cantidad mayor que 0.</value>
+  </data>
+</root>

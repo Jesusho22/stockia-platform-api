@@ -1,0 +1,38 @@
+# Local environment: MySQL + StockIA Platform API.
+#   docker compose up --build
+#   API:     http://localhost:5000/swagger
+#   Web App: in stockia-webapp set VITE_STOCKIA_API_URL=http://localhost:5000/api/v1
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: stockia
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      retries: 20
+    volumes:
+      - stockia-mysql:/var/lib/mysql
+
+  api:
+    build: .
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "5000:8080"
+    environment:
+      STOCKIA_DB_HOST: mysql
+      STOCKIA_DB_PORT: "3306"
+      STOCKIA_DB_USER: root
+      STOCKIA_DB_PASSWORD: root
+      STOCKIA_DB_NAME: stockia
+      STOCKIA_DB_SSLMODE: None
+      STOCKIA_JWT_SECRET: local-docker-secret-change-me-0123456789abcdef
+      STOCKIA_CORS_ORIGINS: http://localhost:5173,http://localhost:4173
+
+volumes:
+  stockia-mysql:
