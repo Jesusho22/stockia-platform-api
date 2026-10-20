@@ -21,6 +21,9 @@ public static class DemandFeatureBuilder
     public const int MinimumLagDays = 7;
 
     /// <param name="history">Units sold per day; missing days count as 0.</param>
+    /// <param name="target">Day to forecast.</param>
+    /// <param name="tempMaxC">Maximum temperature of that day (°C).</param>
+    /// <param name="precipitationMm">Precipitation of that day (mm).</param>
     public static float[] Build(IReadOnlyDictionary<DateOnly, double> history, DateOnly target, double tempMaxC, double precipitationMm)
     {
         double Units(int daysBack) => history.TryGetValue(target.AddDays(-daysBack), out var units) ? units : 0d;

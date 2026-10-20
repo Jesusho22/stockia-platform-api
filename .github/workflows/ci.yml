@@ -69,7 +69,9 @@ jobs:
             if curl -fs http://localhost:5000/api/v1/health; then echo; exit 0; fi
             sleep 2
           done
-          cat api.log; exit 1
+          echo "::error title=API did not start::$(grep -iE 'fail|exception|error|unhandled' api.log | head -n 25 | sed ':a;N;$!ba;s/\n/%0A/g')"
+          echo "::error title=api.log tail::$(tail -n 40 api.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+          exit 1
       - name: API smoke tests (auth, roles, stock rules, sales, ML forecast, alerts)
         run: python tests/smoke/smoke_test.py http://localhost:5000/api/v1
 
@@ -111,4 +113,6 @@ jobs:
           if-no-files-found: ignore
       - name: API log
         if: failure()
-        run: tail -n 200 api.log
+        run: |
+          tail -n 200 api.log
+          echo "::error title=api.log errors::$(grep -iE 'fail|exception|error' api.log | tail -n 30 | sed ':a;N;$!ba;s/\n/%0A/g')"

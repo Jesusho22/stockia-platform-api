@@ -33,7 +33,7 @@ public class ModelParityTests
     [Fact]
     public void Feature_order_matches_the_trained_model()
     {
-        var order = Fixture.GetProperty("feature_order").EnumerateArray().Select(value => value.GetString()).ToList();
+        var order = Fixture.GetProperty("feature_order").EnumerateArray().Select(value => value.GetString() ?? string.Empty).ToList();
         Assert.Equal(DemandFeatureBuilder.FeatureOrder, order);
     }
 
