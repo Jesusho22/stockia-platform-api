@@ -1,0 +1,21 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.idea/
+TestResults/
+appsettings.*.local.json
+
+# Python / ML
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+ml/data/raw/
+ml/data/processed/
+
+# OS
+.DS_Store
+Thumbs.db

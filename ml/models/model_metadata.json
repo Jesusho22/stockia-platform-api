@@ -1,0 +1,78 @@
+{
+  "model_name": "stockia-demand",
+  "model_version": "1.0.0",
+  "trained_at": "2026-10-20T02:46:16+00:00",
+  "algorithm": "HistGradientBoostingRegressor(loss=poisson), scikit-learn 1.6.1",
+  "target": "units sold per dish and day",
+  "horizon_days": 7,
+  "feature_order": [
+    "lag_7",
+    "lag_14",
+    "mean_7_13",
+    "mean_7_34",
+    "same_weekday_mean_4w",
+    "day_of_week",
+    "is_weekend",
+    "day_of_month",
+    "month",
+    "is_holiday",
+    "is_holiday_eve",
+    "is_payday_window",
+    "temp_max_c",
+    "precipitation_mm"
+  ],
+  "history_days_required": 34,
+  "onnx_input": "features",
+  "onnx_output": "units",
+  "onnx_opset": {
+    "": 17,
+    "ai.onnx.ml": 3
+  },
+  "data_sources": [
+    "synthetic(weather=climatology)"
+  ],
+  "training_rows": 55224,
+  "date_range": [
+    "2023-02-04",
+    "2025-12-31"
+  ],
+  "metrics": {
+    "model": {
+      "mae": 9.445,
+      "rmse": 15.35,
+      "wape": 0.2874,
+      "bias": -0.0073
+    },
+    "baseline_lag_7": {
+      "mae": 12.475,
+      "rmse": 20.416,
+      "wape": 0.3796,
+      "bias": -0.0008
+    },
+    "baseline_same_weekday_mean_4w": {
+      "mae": 9.822,
+      "rmse": 15.96,
+      "wape": 0.2989,
+      "bias": -0.0285
+    },
+    "test_days": 56,
+    "test_rows": 2912,
+    "special_days": {
+      "rows": 624,
+      "model": {
+        "mae": 10.808,
+        "rmse": 16.948,
+        "wape": 0.3175,
+        "bias": 0.0017
+      },
+      "baseline_same_weekday_mean_4w": {
+        "mae": 11.537,
+        "rmse": 18.702,
+        "wape": 0.3389,
+        "bias": -0.0783
+      }
+    }
+  },
+  "confidence_base": 0.7126,
+  "onnx_max_abs_difference": 4.5e-05
+}

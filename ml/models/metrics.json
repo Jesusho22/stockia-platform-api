@@ -1,0 +1,37 @@
+{
+  "model": {
+    "mae": 9.445,
+    "rmse": 15.35,
+    "wape": 0.2874,
+    "bias": -0.0073
+  },
+  "baseline_lag_7": {
+    "mae": 12.475,
+    "rmse": 20.416,
+    "wape": 0.3796,
+    "bias": -0.0008
+  },
+  "baseline_same_weekday_mean_4w": {
+    "mae": 9.822,
+    "rmse": 15.96,
+    "wape": 0.2989,
+    "bias": -0.0285
+  },
+  "test_days": 56,
+  "test_rows": 2912,
+  "special_days": {
+    "rows": 624,
+    "model": {
+      "mae": 10.808,
+      "rmse": 16.948,
+      "wape": 0.3175,
+      "bias": 0.0017
+    },
+    "baseline_same_weekday_mean_4w": {
+      "mae": 11.537,
+      "rmse": 18.702,
+      "wape": 0.3389,
+      "bias": -0.0783
+    }
+  }
+}
