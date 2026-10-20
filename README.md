@@ -303,10 +303,32 @@ nuevo hay que subir `model_version` y revisar que `metrics.json` siga mejor que 
 
 ---
 
-## 8. Despliegue (propuesta)
+## 8. Despliegue en Azure (igual que QULLQA)
 
-| Pieza | Opción gratuita sugerida |
+| Pieza | Servicio |
 |---|---|
+| API | Azure App Service (Linux, .NET 10), publicado por `.github/workflows/deploy-azure.yml` en cada push a `main` |
+| MySQL | Azure Database for MySQL – Flexible Server (Burstable B1ms), `STOCKIA_DB_SSLMODE=Required` |
+| Web App | Vercel, con `VITE_STOCKIA_API_URL=https://<app>.azurewebsites.net/api/v1` |
+
+Configuración del App Service (*Settings → Environment variables*):
+
+| Variable | Valor |
+|---|---|
+| `STOCKIA_DB_HOST` | `<servidor>.mysql.database.azure.com` |
+| `STOCKIA_DB_PORT` / `STOCKIA_DB_NAME` | `3306` / `stockia` (la API crea la base y las tablas al arrancar) |
+| `STOCKIA_DB_USER` / `STOCKIA_DB_PASSWORD` | Administrador del servidor MySQL |
+| `STOCKIA_DB_SSLMODE` | `Required` |
+| `STOCKIA_JWT_SECRET` | 32+ caracteres aleatorios (`openssl rand -base64 48`) |
+| `STOCKIA_CORS_ORIGINS` | URL de la Web App en Vercel |
+
+*Startup command:* `dotnet DataBit.StockIA.Platform.dll`. En GitHub: secreto `AZURE_WEBAPP_PUBLISH_PROFILE`
+(perfil de publicación del App Service) y variable `AZURE_WEBAPP_NAME`. El servidor MySQL debe permitir el
+acceso desde servicios de Azure (*Networking → Allow public access from any Azure service*).
+
+Alternativas sin Azure: Render o Railway con el `Dockerfile` (puerto `PORT`) y MySQL en Aiven o Railway.
+
+---|---|
 | API | Render o Railway con el `Dockerfile` (puerto `PORT`) |
 | MySQL | Aiven for MySQL (plan gratuito) o Railway MySQL, con `STOCKIA_DB_SSLMODE=Required` |
 | Web App | Vercel, con `VITE_STOCKIA_API_URL=https://<api>/api/v1` |
