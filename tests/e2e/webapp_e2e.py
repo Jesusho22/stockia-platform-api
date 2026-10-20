@@ -37,6 +37,11 @@ def api(path, token=None, body=None, method=None):
         return json.loads(raw) if raw else None
 
 
+def wait_url(page, fragment, timeout=20000):
+    """SPA routes change with pushState: poll the URL instead of waiting for a page load."""
+    expect(page).to_have_url(re.compile(re.escape(fragment)), timeout=timeout)
+
+
 def toast_text(page):
     page.wait_for_selector(".p-toast-message", timeout=8000)
     return " ".join(page.locator(".p-toast-message").all_inner_texts())
@@ -50,7 +55,7 @@ def sign_in_as(page, role_button):
     page.goto(f"{BASE}/auth/sign-in")
     page.get_by_role("button", name=role_button).click()
     page.get_by_role("button", name="Sign in", exact=True).click()
-    page.wait_for_url("**/app/dashboard")
+    wait_url(page, "/app/dashboard")
 
 
 def sign_out(page):
@@ -58,7 +63,7 @@ def sign_out(page):
     if toggle.get_attribute("aria-expanded") != "true":
         toggle.click()
     page.locator(".sidebar").get_by_role("button", name="Sign out").click()
-    page.wait_for_url("**/auth/sign-in")
+    wait_url(page, "/auth/sign-in")
 
 
 admin_token = api("/authentication/sign-in", body={"email": "admin@databitecorp.com", "password": "stockia123"})["token"]
@@ -75,7 +80,7 @@ def run(playwright):
 
     # Sign-in rules
     page.goto(f"{BASE}/app/inventory")
-    page.wait_for_url("**/auth/sign-in**")
+    wait_url(page, "/auth/sign-in")
     check("starts in English and asks to sign in", page.locator("html").get_attribute("lang") == "en" and "Sign in to continue" in toast_text(page))
     clear_toasts(page)
     page.fill("#sign-in-email", "admin@databitecorp.com")
@@ -167,7 +172,7 @@ def run(playwright):
     check("employee menu hides admin sections", side.get_by_role("link", name="Roles & permissions").count() == 0
           and side.get_by_role("link", name="Recommendations").count() == 0)
     page.goto(f"{BASE}/app/roles")
-    page.wait_for_url("**/app/dashboard")
+    wait_url(page, "/app/dashboard")
     check("employee blocked from roles", "Access denied" in toast_text(page))
     clear_toasts(page)
     sign_out(page)
@@ -180,7 +185,7 @@ def run(playwright):
     page.fill("#sign-up-password", "Picante2026")
     page.fill("#sign-up-confirm-password", "Picante2026")
     page.get_by_role("button", name="Create account").click()
-    page.wait_for_url("**/app/dashboard")
+    wait_url(page, "/app/dashboard")
     page.goto(f"{BASE}/app/settings/plans")
     expect(page.get_by_text("Your current plan")).to_be_visible()
     check("new restaurant on the free plan", "Esencial" in page.locator("li", has_text="Your current plan").inner_text())
@@ -192,7 +197,7 @@ def run(playwright):
         localStorage.setItem('stockia.session', JSON.stringify(session));
     }""")
     page.goto(f"{BASE}/app/inventory")
-    page.wait_for_url("**/auth/sign-in**", timeout=15000)
+    wait_url(page, "/auth/sign-in", 15000)
     check("invalid token -> signed out with notice", "Your session expired" in toast_text(page))
 
     # Mobile
@@ -200,11 +205,11 @@ def run(playwright):
     mobile.goto(f"{BASE}/auth/sign-in")
     mobile.get_by_role("button", name="Administrator").click()
     mobile.get_by_role("button", name="Sign in", exact=True).click()
-    mobile.wait_for_url("**/app/dashboard")
+    wait_url(mobile, "/app/dashboard")
     mobile.get_by_role("button", name="Open navigation menu").click()
     check("mobile dropdown menu", mobile.locator("#mobile-menu").is_visible())
     mobile.locator("#mobile-menu").get_by_role("link", name="Inventory").click()
-    mobile.wait_for_url("**/app/inventory")
+    wait_url(mobile, "/app/inventory")
     expect(mobile.get_by_role("cell", name="Papa", exact=True)).to_be_visible()
     check("mobile without horizontal scroll", mobile.evaluate("document.documentElement.scrollWidth - window.innerWidth") <= 0)
     mobile.screenshot(path=f"{SHOTS}/05-mobile-inventory.png")
@@ -216,9 +221,9 @@ with sync_playwright() as playwright:
         run(playwright)
     except Exception as error:  # noqa: BLE001 - report any failure as an annotation
         import traceback
-        location = traceback.extract_tb(error.__traceback__)[-1]
+        location = next((frame for frame in reversed(traceback.extract_tb(error.__traceback__)) if frame.filename.endswith("webapp_e2e.py")), None)
         message = str(error).replace("\n", " ")[:600]
-        print(f"::error title=Web App e2e crashed (line {location.lineno})::{type(error).__name__}: {message}")
+        print(f"::error title=Web App e2e crashed (line {location.lineno if location else "?"})::{type(error).__name__}: {message}")
         if current_page is not None:
             try:
                 current_page.screenshot(path=f"{SHOTS}/crash.png", full_page=True)
