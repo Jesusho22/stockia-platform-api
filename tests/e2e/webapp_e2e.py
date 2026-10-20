@@ -63,9 +63,14 @@ def sign_out(page):
 
 admin_token = api("/authentication/sign-in", body={"email": "admin@databitecorp.com", "password": "stockia123"})["token"]
 
-with sync_playwright() as playwright:
+current_page = None
+
+
+def run(playwright):
+    global current_page
     browser = playwright.chromium.launch()
     page = browser.new_page(viewport={"width": 1366, "height": 900})
+    current_page = page
     page.on("pageerror", lambda error: console_errors.append(str(error)))
 
     # Sign-in rules
@@ -204,6 +209,23 @@ with sync_playwright() as playwright:
     check("mobile without horizontal scroll", mobile.evaluate("document.documentElement.scrollWidth - window.innerWidth") <= 0)
     mobile.screenshot(path=f"{SHOTS}/05-mobile-inventory.png")
     browser.close()
+
+
+with sync_playwright() as playwright:
+    try:
+        run(playwright)
+    except Exception as error:  # noqa: BLE001 - report any failure as an annotation
+        import traceback
+        location = traceback.extract_tb(error.__traceback__)[-1]
+        message = str(error).replace("\n", " ")[:600]
+        print(f"::error title=Web App e2e crashed (line {location.lineno})::{type(error).__name__}: {message}")
+        if current_page is not None:
+            try:
+                current_page.screenshot(path=f"{SHOTS}/crash.png", full_page=True)
+                print(f"::error title=Page at crash::{current_page.url} | {current_page.inner_text('body')[:500].replace(chr(10), ' ')}")
+            except Exception:  # noqa: BLE001
+                pass
+        results.append(False)
 
 check("no JavaScript errors", not console_errors, console_errors[:3])
 print(f"\n{sum(results)}/{len(results)} passed")
