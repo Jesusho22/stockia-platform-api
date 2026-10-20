@@ -30,7 +30,7 @@ services:
       STOCKIA_DB_USER: root
       STOCKIA_DB_PASSWORD: root
       STOCKIA_DB_NAME: stockia
-      STOCKIA_DB_SSLMODE: None
+      STOCKIA_DB_SSLMODE: Preferred
       STOCKIA_JWT_SECRET: local-docker-secret-change-me-0123456789abcdef
       STOCKIA_CORS_ORIGINS: http://localhost:5173,http://localhost:4173
 

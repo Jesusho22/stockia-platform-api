@@ -50,7 +50,7 @@ jobs:
       STOCKIA_DB_USER: root
       STOCKIA_DB_PASSWORD: root
       STOCKIA_DB_NAME: stockia
-      STOCKIA_DB_SSLMODE: None
+      STOCKIA_DB_SSLMODE: Preferred
       STOCKIA_JWT_SECRET: ci-secret-for-tests-only-0123456789abcdef
       STOCKIA_CORS_ORIGINS: http://localhost:4173
     steps:
