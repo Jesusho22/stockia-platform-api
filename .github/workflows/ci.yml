@@ -1,0 +1,118 @@
+name: API CI
+
+on:
+  push:
+    paths-ignore: ["**.md", "ml/data/**"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      webapp_ref:
+        description: "Branch of Jesusho22/stockia-webapp for the end-to-end tests"
+        default: "feature/platform-api"
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-test:
+    name: Build and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet restore DataBit.StockIA.Platform.sln
+      - run: dotnet build DataBit.StockIA.Platform.sln -c Release --no-restore
+      - name: Unit tests (domain rules, Peru calendar, ONNX parity with Python)
+        run: dotnet test DataBit.StockIA.Platform.sln -c Release --no-build --logger GitHubActions --logger "console;verbosity=normal"
+
+  api-integration:
+    name: API + MySQL + Web App end-to-end
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: stockia
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -proot"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://localhost:5000
+      STOCKIA_DB_HOST: 127.0.0.1
+      STOCKIA_DB_PORT: "3306"
+      STOCKIA_DB_USER: root
+      STOCKIA_DB_PASSWORD: root
+      STOCKIA_DB_NAME: stockia
+      STOCKIA_DB_SSLMODE: Preferred
+      STOCKIA_JWT_SECRET: ci-secret-for-tests-only-0123456789abcdef
+      STOCKIA_CORS_ORIGINS: http://localhost:4173
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Start the API
+        run: |
+          dotnet publish DataBit.StockIA.Platform/DataBit.StockIA.Platform.csproj -c Release -o publish
+          (cd publish && nohup dotnet DataBit.StockIA.Platform.dll > ../api.log 2>&1 &)
+          for i in $(seq 1 60); do
+            if curl -fs http://localhost:5000/api/v1/health; then echo; exit 0; fi
+            sleep 2
+          done
+          echo "::error title=API did not start::$(grep -iE 'fail|exception|error|unhandled' api.log | head -n 25 | sed ':a;N;$!ba;s/\n/%0A/g')"
+          echo "::error title=api.log tail::$(tail -n 40 api.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+          exit 1
+      - name: API smoke tests (auth, roles, stock rules, sales, ML forecast, alerts)
+        run: python tests/smoke/smoke_test.py http://localhost:5000/api/v1
+
+      - name: Check out the Web Application
+        id: webapp
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: Jesusho22/stockia-webapp
+          ref: ${{ inputs.webapp_ref || 'feature/platform-api' }}
+          path: webapp
+      - uses: actions/setup-node@v4
+        if: steps.webapp.outcome == 'success'
+        with:
+          node-version: "22"
+      - name: Build the Web Application against this API
+        if: steps.webapp.outcome == 'success'
+        working-directory: webapp
+        run: |
+          npm ci
+          printf 'VITE_STOCKIA_API_URL="http://localhost:5000/api/v1"\n' > .env.production.local
+          npm run build
+          nohup npx vite preview --port 4173 --strictPort > ../webapp.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs http://localhost:4173 > /dev/null && exit 0; sleep 1; done; exit 1
+      - name: Web Application end-to-end tests (Playwright)
+        if: steps.webapp.outcome == 'success'
+        run: |
+          pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+          python tests/e2e/webapp_e2e.py http://localhost:4173
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: logs-and-screenshots
+          path: |
+            api.log
+            webapp.log
+            tests/e2e/screenshots/
+          if-no-files-found: ignore
+      - name: API log
+        if: failure()
+        run: |
+          tail -n 200 api.log
+          echo "::error title=api.log errors::$(grep -iE 'fail|exception|error' api.log | tail -n 30 | sed ':a;N;$!ba;s/\n/%0A/g')"

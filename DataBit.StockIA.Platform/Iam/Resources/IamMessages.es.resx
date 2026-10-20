@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="InvalidCredentials" xml:space="preserve">
+    <value>Correo o contraseña incorrectos.</value>
+  </data>
+  <data name="EmailAlreadyTaken" xml:space="preserve">
+    <value>El correo '{0}' ya está registrado.</value>
+  </data>
+  <data name="UserNotFound" xml:space="preserve">
+    <value>Usuario no encontrado.</value>
+  </data>
+  <data name="RestaurantNotFound" xml:space="preserve">
+    <value>Restaurante no encontrado.</value>
+  </data>
+  <data name="CurrentPasswordInvalid" xml:space="preserve">
+    <value>La contraseña actual no es correcta.</value>
+  </data>
+  <data name="SamePassword" xml:space="preserve">
+    <value>La nueva contraseña debe ser distinta de la actual.</value>
+  </data>
+  <data name="LastAdministrator" xml:space="preserve">
+    <value>El equipo debe conservar al menos un Administrador.</value>
+  </data>
+  <data name="CannotRemoveYourself" xml:space="preserve">
+    <value>No puedes eliminar tu propia cuenta del equipo.</value>
+  </data>
+  <data name="DatabaseError" xml:space="preserve">
+    <value>No se pudo guardar la cuenta. Inténtalo de nuevo.</value>
+  </data>
+</root>

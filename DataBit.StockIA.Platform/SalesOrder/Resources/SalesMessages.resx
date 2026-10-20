@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="RecipeNotFound" xml:space="preserve">
+    <value>The recipe to sell was not found.</value>
+  </data>
+  <data name="CannotSell" xml:space="preserve">
+    <value>"{0}" cannot be sold: a supply is missing, short or expired. No sale was recorded.</value>
+  </data>
+  <data name="SaleNotFound" xml:space="preserve">
+    <value>Sale not found.</value>
+  </data>
+  <data name="AlreadyVoided" xml:space="preserve">
+    <value>The sale is already voided.</value>
+  </data>
+  <data name="DatabaseError" xml:space="preserve">
+    <value>The sale could not be saved. Try again.</value>
+  </data>
+</root>

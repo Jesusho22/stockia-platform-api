@@ -1,0 +1,26 @@
+@host = http://localhost:5000/api/v1
+
+### Sign in (demo Administrator)
+# @name signIn
+POST {{host}}/authentication/sign-in
+Content-Type: application/json
+
+{ "email": "admin@databitecorp.com", "password": "stockia123" }
+
+### Supplies
+GET {{host}}/inventory-items
+Authorization: Bearer {{signIn.response.body.token}}
+
+### Sell one Ensalada César con Pollo (recipe 3)
+POST {{host}}/sales
+Authorization: Bearer {{signIn.response.body.token}}
+Content-Type: application/json
+
+{ "recipeId": 3, "quantity": 1 }
+
+### Generate a demand forecast (ML)
+POST {{host}}/demand-forecasts
+Authorization: Bearer {{signIn.response.body.token}}
+Content-Type: application/json
+
+{ "horizonDays": 7 }
