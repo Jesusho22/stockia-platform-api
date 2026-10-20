@@ -64,7 +64,7 @@ jobs:
       - name: Start the API
         run: |
           dotnet publish DataBit.StockIA.Platform/DataBit.StockIA.Platform.csproj -c Release -o publish
-          nohup dotnet publish/DataBit.StockIA.Platform.dll > api.log 2>&1 &
+          (cd publish && nohup dotnet DataBit.StockIA.Platform.dll > ../api.log 2>&1 &)
           for i in $(seq 1 60); do
             if curl -fs http://localhost:5000/api/v1/health; then echo; exit 0; fi
             sleep 2
