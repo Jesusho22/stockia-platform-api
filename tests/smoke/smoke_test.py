@@ -61,7 +61,7 @@ status, _, _ = call("GET", "/inventory-items")
 check("no token -> 401", status == 401, status)
 
 status, items, _ = call("GET", "/inventory-items", token)
-check("inventory listed newest first", status == 200 and len(items) == 8 and items[0]["id"] > items[-1]["id"], items)
+check("inventory listed newest first", status == 200 and len(items) == 10 and items[0]["id"] > items[-1]["id"], items)
 chicken = [item for item in items if item["name"] == "Pechuga de pollo"]
 expired_lot = next(item for item in chicken if item["status"] == "EXPIRED")
 fresh_lot = next(item for item in chicken if item["status"] != "EXPIRED")
@@ -90,6 +90,11 @@ check("no stock -> 422 CannotSell with shortages", status == 422 and blocked["ti
       and shortages[0]["reason"] == "INSUFFICIENT" and shortages[0]["itemName"] == "Lomo fino", blocked)
 status, sales_after, _ = call("GET", "/sales", token)
 check("blocked sale is not recorded", len(sales_after) == len(sales_before), (len(sales_before), len(sales_after)))
+
+status, blocked, _ = call("POST", "/sales", token, {"recipeId": recipe_id["Fettuccine Alfredo"], "quantity": 1})
+shortages = blocked.get("details", {}).get("shortages", []) if isinstance(blocked, dict) else []
+check("expired product -> 422 with reason EXPIRED", status == 422 and any(
+    item["reason"] == "EXPIRED" and item["itemName"] == "Crema de leche" for item in shortages), blocked)
 
 status, sale, _ = call("POST", "/sales", token, {"recipeId": recipe_id["Ensalada César con Pollo"], "quantity": 1})
 check("sale with fresh lot", status == 201 and Decimal(str(sale["total"])) == Decimal("3.12") and sale["status"] == "CONFIRMED", sale)
@@ -177,11 +182,14 @@ status, body, _ = call("POST", "/demand-forecasts", owner["token"], {})
 check("forecast without recipes -> 422", status == 422 and body["title"] == "NoDishes", body)
 
 status, summary, _ = call("GET", "/dashboard/summary", token)
-check("dashboard summary", status == 200 and summary["registeredSupplies"] == 9 and summary["pendingAlerts"] > 0, summary)
+check("dashboard summary", status == 200 and summary["registeredSupplies"] == 11 and summary["pendingAlerts"] > 0, summary)
 
 status, _, headers = call("OPTIONS", "/inventory-items", headers={"Origin": "http://localhost:4173", "Access-Control-Request-Method": "GET",
                                                                   "Access-Control-Request-Headers": "authorization"})
 check("CORS preflight for the Web App", headers.get("Access-Control-Allow-Origin") == "http://localhost:4173", (status, headers))
 
 print(f"\n{sum(results)}/{len(results)} passed")
+print(f"::notice title=API smoke tests::{sum(results)}/{len(results)} passed | forecast {forecast.get('method')} {forecast.get('modelVersion')} "
+      f"confidence {forecast.get('confidenceScore')} weather {forecast.get('weatherCondition')}/{forecast.get('weatherSource')} | "
+      f"{[(p['date'][5:], p['projectedUnits']) for p in forecast.get('dataPoints', [])]}")
 sys.exit(0 if all(results) else 1)

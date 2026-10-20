@@ -109,7 +109,11 @@ public class DatabaseSeeder(
         var lettuce = Item("Lechuga", "6", "4", StorageType.Refrigerated, 5, 3.5m);
         var potato = Item("Papa", "40", "20", StorageType.Ambient, 45, 2.1m);
         var freshChicken = Item("Pechuga de pollo", "12.5", "10", StorageType.Refrigerated, 4, 15m);
-        var items = new[] { expiredChicken, flour, cheese, tomato, beef, lettuce, potato, freshChicken };
+        // A product whose only lot is expired: its dish cannot be sold.
+        var cream = new InventoryItem(restaurant.Id, "Crema de leche", "L", Quantity.Parse("3"), Quantity.Parse("1"), StorageType.Refrigerated,
+            7, 12m, today).OverrideExpirationDate(today.AddDays(-2));
+        var pasta = Item("Fettuccine", "5", "2", StorageType.Ambient, 120, 8m);
+        var items = new[] { expiredChicken, flour, cheese, tomato, beef, lettuce, potato, freshChicken, cream, pasta };
         context.Set<InventoryItem>().AddRange(items);
         await context.SaveChangesAsync(cancellationToken);
 
@@ -118,7 +122,8 @@ public class DatabaseSeeder(
         {
             new Recipe(restaurant.Id, "Pizza Margarita", [Line(flour, "0.3"), Line(cheese, "0.2"), Line(tomato, "0.15")]),
             new Recipe(restaurant.Id, "Lomo Saltado", [Line(beef, "0.25"), Line(potato, "0.3"), Line(tomato, "0.1")]),
-            new Recipe(restaurant.Id, "Ensalada César con Pollo", [Line(freshChicken, "0.18"), Line(lettuce, "0.12")])
+            new Recipe(restaurant.Id, "Ensalada César con Pollo", [Line(freshChicken, "0.18"), Line(lettuce, "0.12")]),
+            new Recipe(restaurant.Id, "Fettuccine Alfredo", [Line(pasta, "0.15"), Line(cream, "0.1")])
         };
         context.Set<Recipe>().AddRange(recipes);
         await context.SaveChangesAsync(cancellationToken);
@@ -146,6 +151,7 @@ public class DatabaseSeeder(
     {
         var random = new Random(2026);
         double[] weekdayFactors = [0.80, 0.85, 0.90, 0.95, 1.15, 1.35, 1.20];
+        // Fettuccine Alfredo is new on the menu: it has no sales history yet.
         var baseUnits = new Dictionary<string, double> { ["Pizza Margarita"] = 28, ["Lomo Saltado"] = 32, ["Ensalada César con Pollo"] = 22 };
         var offset = clock.Now.Offset;
 
@@ -157,7 +163,7 @@ public class DatabaseSeeder(
             else if (PeruCalendar.IsHolidayEve(day)) factor *= 1.07;
             if (PeruCalendar.IsPaydayWindow(day)) factor *= 1.12;
 
-            var lines = recipes.Select(recipe =>
+            var lines = recipes.Where(recipe => baseUnits.ContainsKey(recipe.DishName)).Select(recipe =>
             {
                 var noise = Math.Sqrt(-2 * Math.Log(1 - random.NextDouble())) * Math.Cos(2 * Math.PI * random.NextDouble());
                 var units = (int)Math.Round(baseUnits[recipe.DishName] * factor * (1 + 0.18 * noise));
