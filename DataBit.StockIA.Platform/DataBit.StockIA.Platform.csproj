@@ -23,6 +23,8 @@
         <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.18.0" />
         <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
         <PackageReference Include="MySql.EntityFrameworkCore" Version="10.0.7" />
+        <!-- Swashbuckle 10.2.0 brings Microsoft.OpenApi 2.4.1 (GHSA-v5pm-xwqc-g5wc); 2.7.5 is the patched version. -->
+        <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.0" />
         <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.2.0" />
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.18.0" />
