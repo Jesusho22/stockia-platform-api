@@ -93,7 +93,11 @@ def run(playwright):
     expect(page.get_by_role("heading", name=re.compile("Carla Gallardo"))).to_be_visible()
     session = page.evaluate("JSON.parse(localStorage.getItem('stockia.session'))")
     check("session keeps the JWT", bool(session and session.get("token")), session)
-    page.screenshot(path=f"{SHOTS}/01-dashboard.png")
+    savings = page.get_by_test_id("weekly-savings")
+    expect(savings).to_be_visible()
+    check("weekly savings for the Administrator", "Weekly savings" in savings.inner_text() and "Tomate" in savings.inner_text(),
+          savings.inner_text()[:300])
+    page.screenshot(path=f"{SHOTS}/01-dashboard.png", full_page=True)
 
     # Inventory
     page.goto(f"{BASE}/app/inventory")
@@ -168,6 +172,8 @@ def run(playwright):
 
     # Employee
     sign_in_as(page, "Employee")
+    expect(page.get_by_role("heading", name=re.compile("Jesus Miranda"))).to_be_visible()
+    check("employee dashboard without financial savings", page.get_by_test_id("weekly-savings").count() == 0)
     side = page.locator(".sidebar")
     check("employee menu hides admin sections", side.get_by_role("link", name="Roles & permissions").count() == 0
           and side.get_by_role("link", name="Recommendations").count() == 0)
@@ -175,6 +181,54 @@ def run(playwright):
     wait_url(page, "/app/dashboard")
     check("employee blocked from roles", "Access denied" in toast_text(page))
     clear_toasts(page)
+    sign_out(page)
+
+    # Account Lock Service: 5 wrong passwords lock the account; the Administrator unlocks it.
+    member = api("/users", admin_token, {"fullName": "Lucia Ramos", "email": "lucia@databitecorp.com", "role": "EMPLOYEE"})
+    page.goto(f"{BASE}/auth/sign-in")
+    messages = []
+    for _ in range(5):
+        clear_toasts(page)
+        page.fill("#sign-in-email", "lucia@databitecorp.com")
+        page.fill("#sign-in-password", "wrong-pass1")
+        page.get_by_role("button", name="Sign in", exact=True).click()
+        messages.append(toast_text(page))
+    check("sign-in warns the attempts left", "Attempts left before the account is locked: 2" in messages[2]
+          and "Attempts left before the account is locked: 1" in messages[3], messages)
+    check("5 wrong passwords lock the account", "Your account is locked for 15 more minute(s)" in messages[4], messages[4])
+    page.screenshot(path=f"{SHOTS}/06-account-locked.png")
+    clear_toasts(page)
+    sign_in_as(page, "Administrator")
+    page.goto(f"{BASE}/app/roles")
+    row = page.locator("tr", has_text="lucia@databitecorp.com")
+    expect(row.get_by_text("Locked")).to_be_visible()
+    row.get_by_role("button", name="Unlock Lucia Ramos").click()
+    check("Administrator unlocks the member", "Lucia Ramos can sign in again" in toast_text(page))
+    clear_toasts(page)
+    sign_out(page)
+
+    # Password Reset Service: recovery link by email (simulated provider in demo mode).
+    page.get_by_role("link", name="Forgot your password?").click()
+    wait_url(page, "/auth/forgot-password")
+    page.fill("#forgot-email", "lucia@databitecorp.com")
+    page.get_by_role("button", name="Send recovery link").click()
+    expect(page.get_by_test_id("simulated-email")).to_be_visible()
+    check("recovery link sent", "l***a@databitecorp.com" in page.locator(".sent-box").inner_text(), page.locator(".sent-box").inner_text())
+    page.screenshot(path=f"{SHOTS}/07-recovery-email.png")
+    page.get_by_role("link", name="Open the recovery link").click()
+    wait_url(page, "/auth/reset-password")
+    check("link fills email and code", page.input_value("#reset-email") == "lucia@databitecorp.com" and len(page.input_value("#reset-code")) == 6)
+    page.fill("#reset-new-password", "Lucia2026")
+    page.fill("#reset-confirm-password", "Lucia2026")
+    page.get_by_role("button", name="Save new password").click()
+    wait_url(page, "/auth/sign-in")
+    check("password updated notice", "Password updated" in toast_text(page))
+    clear_toasts(page)
+    page.fill("#sign-in-email", "lucia@databitecorp.com")
+    page.fill("#sign-in-password", "Lucia2026")
+    page.get_by_role("button", name="Sign in", exact=True).click()
+    wait_url(page, "/app/dashboard")
+    check("sign in with the new password", True)
     sign_out(page)
 
     # Sign-up creates a restaurant in the API
