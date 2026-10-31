@@ -1,6 +1,6 @@
 # Local environment: MySQL + StockIA Platform API.
 #   docker compose up --build
-#   API:     http://localhost:5000/swagger
+#   API:     http://localhost:5000/scalar (OpenAPI: /openapi/v1.json)
 #   Web App: in stockia-webapp set VITE_STOCKIA_API_URL=http://localhost:5000/api/v1
 services:
   mysql:
@@ -33,6 +33,9 @@ services:
       STOCKIA_DB_SSLMODE: Preferred
       STOCKIA_JWT_SECRET: local-docker-secret-change-me-0123456789abcdef
       STOCKIA_CORS_ORIGINS: http://localhost:5173,http://localhost:4173
+      # Local demo: the simulated recovery email is returned by the API (never enable it in production).
+      Iam__PasswordReset__ExposeSimulatedEmail: "true"
+      Iam__PasswordReset__ResetLinkBaseUrl: http://localhost:5173
 
 volumes:
   stockia-mysql:

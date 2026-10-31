@@ -1,74 +1,140 @@
 using Microsoft.Extensions.Localization;
-using DataBit.StockIA.Platform.Iam.Application.CommandServices;
+using DataBit.StockIA.Platform.Iam.Application.Errors;
 using DataBit.StockIA.Platform.Iam.Application.Internal.OutboundServices;
+using DataBit.StockIA.Platform.Iam.Application.Services;
 using DataBit.StockIA.Platform.Iam.Domain.Model.Aggregates;
 using DataBit.StockIA.Platform.Iam.Domain.Model.Commands;
-using DataBit.StockIA.Platform.Iam.Domain.Model.Errors;
 using DataBit.StockIA.Platform.Iam.Domain.Model.ValueObjects;
 using DataBit.StockIA.Platform.Iam.Domain.Repositories;
+using DataBit.StockIA.Platform.Iam.Domain.Services;
 using DataBit.StockIA.Platform.Iam.Resources;
-using DataBit.StockIA.Platform.Shared.Application.Model;
+using DataBit.StockIA.Platform.Shared.Application;
+using DataBit.StockIA.Platform.Shared.Application.Patterns;
 using DataBit.StockIA.Platform.Shared.Domain.Repositories;
-using DataBit.StockIA.Platform.Subscription.Interfaces.Acl;
 
 namespace DataBit.StockIA.Platform.Iam.Application.Internal.CommandServices;
 
 /// <summary>
-///     Session (sign-in, sign-up) and team management of the User &amp; Access
-///     Management bounded context.
+///     Session (Login Controller, Account Lock Service), password (Password
+///     Change and Password Reset Services) and team management of Identity
+///     &amp; Access Management.
 /// </summary>
 public class UserCommandService(
     IUserRepository userRepository,
-    IRestaurantRepository restaurantRepository,
     ITokenService tokenService,
     IHashingService hashingService,
+    ExternalNotificationService externalNotificationService,
     IUnitOfWork unitOfWork,
-    ISubscriptionContextFacade subscriptionContextFacade,
+    IRestaurantClock clock,
+    IConfiguration configuration,
+    ILogger<UserCommandService> logger,
     IStringLocalizer<IamMessages> localizer) : IUserCommandService
 {
     public async Task<Result<(User user, string token)>> Handle(SignInCommand command, CancellationToken cancellationToken)
     {
+        var now = clock.Now;
         var user = await userRepository.FindByEmailAsync(User.NormalizeEmail(command.Email), cancellationToken);
-        if (user == null || !hashingService.VerifyPassword(command.Password, user.PasswordHash))
+        if (user == null)
             return Result<(User, string)>.Failure(IamError.InvalidCredentials, localizer[nameof(IamError.InvalidCredentials)]);
+        if (user.IsLockedAt(now)) return AccountLocked(user, now);
+
+        if (!hashingService.VerifyPassword(command.Password, user.PasswordHash))
+        {
+            var locked = AccountLockService.RegisterFailedAttempt(user, now);
+            userRepository.Update(user);
+            await unitOfWork.CompleteAsync(cancellationToken);
+            if (locked) return AccountLocked(user, now);
+            var remaining = AccountLockService.RemainingAttempts(user);
+            return Result<(User, string)>.Failure(IamError.InvalidCredentials, localizer[nameof(IamError.InvalidCredentials)],
+                new { remainingAttempts = remaining, maxAttempts = AccountLockService.MaxFailedAttempts });
+        }
+
+        if (user.FailedSignInAttempts > 0 || user.LockedUntil != null)
+        {
+            user.Unlock();
+            userRepository.Update(user);
+            await unitOfWork.CompleteAsync(cancellationToken);
+        }
 
         return Result<(User, string)>.Success((user, tokenService.GenerateToken(user)));
     }
 
-    /// <summary>
-    ///     One transaction: restaurant → owner (Administrator) → owner link →
-    ///     free subscription (Subscription &amp; Billing ACL). A failure in any step
-    ///     rolls back all of them.
-    /// </summary>
-    public async Task<Result<(User user, string token)>> Handle(SignUpCommand command, CancellationToken cancellationToken)
+    /// <summary>The owner of a new restaurant is its first Administrator (Restaurant Registration).</summary>
+    public async Task<Result<(User user, string token)>> Handle(CreateOwnerAccountCommand command, CancellationToken cancellationToken)
     {
         var email = User.NormalizeEmail(command.Email);
         if (await userRepository.ExistsByEmailAsync(email, cancellationToken: cancellationToken))
             return Result<(User, string)>.Failure(IamError.EmailAlreadyTaken, localizer[nameof(IamError.EmailAlreadyTaken), email]);
 
-        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
-        try
+        var user = new User(command.FullName, email, hashingService.HashPassword(command.Password), command.RestaurantId, UserRole.Admin);
+        await userRepository.AddAsync(user, cancellationToken);
+        await unitOfWork.CompleteAsync(cancellationToken);
+        return Result<(User, string)>.Success((user, tokenService.GenerateToken(user)));
+    }
+
+    /// <summary>
+    ///     Sends the recovery link when the email is registered. The answer is
+    ///     the same either way, so nobody can find out which emails exist.
+    /// </summary>
+    public async Task<Result<PasswordResetRequest>> Handle(RequestPasswordResetCommand command, CancellationToken cancellationToken)
+    {
+        var email = User.NormalizeEmail(command.Email);
+        var masked = PasswordResetService.MaskEmail(email);
+        var user = await userRepository.FindByEmailAsync(email, cancellationToken);
+        if (user == null) return Result<PasswordResetRequest>.Success(new PasswordResetRequest(masked, null));
+
+        var code = PasswordResetService.NewCode();
+        var expiresAt = clock.Now.Add(PasswordResetService.CodeLifetime);
+        user.StartPasswordReset(hashingService.HashPassword(code), expiresAt);
+        userRepository.Update(user);
+        await unitOfWork.CompleteAsync(cancellationToken);
+
+        var link = $"{(configuration["Iam:PasswordReset:ResetLinkBaseUrl"] ?? "http://localhost:5173").TrimEnd('/')}" +
+                   $"/auth/reset-password?email={Uri.EscapeDataString(email)}&code={code}";
+        var subject = localizer["PasswordResetSubject"];
+        var body = localizer["PasswordResetBody", user.FullName, link, code, (int)PasswordResetService.CodeLifetime.TotalMinutes];
+        var sent = await externalNotificationService.SendEmail(user.RestaurantId, email, subject, body, cancellationToken);
+        if (!sent) logger.LogWarning("The recovery email for user {UserId} could not be sent", user.Id);
+
+        var expose = externalNotificationService.IsSimulated &&
+                     bool.TryParse(configuration["Iam:PasswordReset:ExposeSimulatedEmail"], out var flag) && flag;
+        return Result<PasswordResetRequest>.Success(new PasswordResetRequest(masked,
+            expose ? new SimulatedEmail(email, subject, link, code, expiresAt) : null));
+    }
+
+    public async Task<Result> Handle(ResetPasswordCommand command, CancellationToken cancellationToken)
+    {
+        var now = clock.Now;
+        var user = await userRepository.FindByEmailAsync(User.NormalizeEmail(command.Email), cancellationToken);
+        if (user == null || !PasswordResetService.CanUseCode(user, now))
+            return Result.Failure(IamError.InvalidResetCode, localizer[nameof(IamError.InvalidResetCode)]);
+
+        if (!hashingService.VerifyPassword(command.Code.Trim(), user.PasswordResetCodeHash!))
         {
-            var restaurant = new Restaurant(command.RestaurantName.Trim());
-            await restaurantRepository.AddAsync(restaurant, cancellationToken);
+            user.RegisterFailedPasswordReset();
+            userRepository.Update(user);
             await unitOfWork.CompleteAsync(cancellationToken);
-
-            var user = new User(command.FullName, email, hashingService.HashPassword(command.Password), restaurant.Id, UserRole.Admin);
-            await userRepository.AddAsync(user, cancellationToken);
-            await unitOfWork.CompleteAsync(cancellationToken);
-
-            restaurant.LinkOwner(user.Id);
-            await unitOfWork.CompleteAsync(cancellationToken);
-
-            await subscriptionContextFacade.CreateDefaultSubscription(restaurant.Id, cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-            return Result<(User, string)>.Success((user, tokenService.GenerateToken(user)));
+            return Result.Failure(IamError.InvalidResetCode, localizer[nameof(IamError.InvalidResetCode)]);
         }
-        catch (Exception)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return Result<(User, string)>.Failure(IamError.DatabaseError, localizer[nameof(IamError.DatabaseError)]);
-        }
+
+        user.UpdatePasswordHash(hashingService.HashPassword(command.NewPassword));
+        user.ClearPasswordReset();
+        user.Unlock();
+        userRepository.Update(user);
+        await unitOfWork.CompleteAsync(cancellationToken);
+        return Result.Success();
+    }
+
+    public async Task<Result<User>> Handle(UnlockUserCommand command, CancellationToken cancellationToken)
+    {
+        var user = await userRepository.FindByIdAsync(command.UserId, cancellationToken);
+        if (user == null || user.RestaurantId != command.RestaurantId)
+            return Result<User>.Failure(IamError.UserNotFound, localizer[nameof(IamError.UserNotFound)]);
+
+        user.Unlock();
+        userRepository.Update(user);
+        await unitOfWork.CompleteAsync(cancellationToken);
+        return Result<User>.Success(user);
     }
 
     public async Task<Result<User>> Handle(InviteMemberCommand command, CancellationToken cancellationToken)
@@ -99,7 +165,7 @@ public class UserCommandService(
         return Result<User>.Success(user);
     }
 
-    /// <summary>The current password is verified before saving the new one.</summary>
+    /// <summary>Password Change Service: the current password is verified before saving the new one.</summary>
     public async Task<Result> Handle(ChangePasswordCommand command, CancellationToken cancellationToken)
     {
         var user = await userRepository.FindByIdAsync(command.UserId, cancellationToken);
@@ -145,4 +211,9 @@ public class UserCommandService(
         await unitOfWork.CompleteAsync(cancellationToken);
         return Result.Success();
     }
+
+    private Result<(User, string)> AccountLocked(User user, DateTimeOffset now) =>
+        Result<(User, string)>.Failure(IamError.AccountLocked,
+            localizer[nameof(IamError.AccountLocked), AccountLockService.MinutesLeft(user, now)],
+            new { lockedUntil = user.LockedUntil, minutesLeft = AccountLockService.MinutesLeft(user, now) });
 }

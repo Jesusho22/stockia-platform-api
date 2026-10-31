@@ -1,4 +1,4 @@
-using DataBit.StockIA.Platform.Iam.Application.QueryServices;
+using DataBit.StockIA.Platform.Iam.Application.Services;
 using DataBit.StockIA.Platform.Iam.Domain.Model.Aggregates;
 using DataBit.StockIA.Platform.Iam.Domain.Model.Queries;
 using DataBit.StockIA.Platform.Iam.Domain.Repositories;

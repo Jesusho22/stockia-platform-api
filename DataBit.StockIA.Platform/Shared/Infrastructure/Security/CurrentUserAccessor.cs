@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using DataBit.StockIA.Platform.Iam.Domain.Model.Aggregates;
 using DataBit.StockIA.Platform.Shared.Application;
 
 namespace DataBit.StockIA.Platform.Shared.Infrastructure.Security;

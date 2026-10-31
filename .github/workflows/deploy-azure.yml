@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net/swagger
+      url: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net/scalar
     steps:
       - name: Check Azure settings
         id: settings

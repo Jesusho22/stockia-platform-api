@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       webapp_ref:
-        description: "Branch of Jesusho22/stockia-webapp for the end-to-end tests"
-        default: "feature/platform-api"
+        description: "Branch of Jesusho22/stockia-webapp for the end-to-end tests (default: same name as this branch, else main)"
+        default: ""
 
 env:
   DOTNET_NOLOGO: true
@@ -27,6 +27,11 @@ jobs:
       - run: dotnet build DataBit.StockIA.Platform.sln -c Release --no-restore
       - name: Unit tests (domain rules, Peru calendar, ONNX parity with Python)
         run: dotnet test DataBit.StockIA.Platform.sln -c Release --no-build --logger GitHubActions --logger "console;verbosity=normal"
+      - name: EF Core migrations are up to date with the model
+        run: |
+          dotnet tool install --global dotnet-ef --version 10.0.13
+          dotnet ef migrations has-pending-model-changes --project DataBit.StockIA.Platform --configuration Release --no-build \
+            || { echo "::error title=Pending model changes::Add a migration (see README > Migraciones)."; exit 1; }
 
   api-integration:
     name: API + MySQL + Web App end-to-end
@@ -53,6 +58,9 @@ jobs:
       STOCKIA_DB_SSLMODE: Preferred
       STOCKIA_JWT_SECRET: ci-secret-for-tests-only-0123456789abcdef
       STOCKIA_CORS_ORIGINS: http://localhost:4173
+      # Demo mode: the simulated recovery email is returned so the tests can follow the link.
+      Iam__PasswordReset__ExposeSimulatedEmail: "true"
+      Iam__PasswordReset__ResetLinkBaseUrl: http://localhost:4173
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -75,13 +83,22 @@ jobs:
       - name: API smoke tests (auth, roles, stock rules, sales, ML forecast, alerts)
         run: python tests/smoke/smoke_test.py http://localhost:5000/api/v1
 
+      - name: Web Application branch
+        id: webapp_ref
+        run: |
+          ref="${{ inputs.webapp_ref }}"
+          if [ -z "$ref" ]; then
+            ref=main
+            git ls-remote --exit-code --heads https://github.com/Jesusho22/stockia-webapp.git "${{ github.ref_name }}" > /dev/null && ref="${{ github.ref_name }}"
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Web App branch::$ref"
       - name: Check out the Web Application
         id: webapp
-        continue-on-error: true
         uses: actions/checkout@v4
         with:
           repository: Jesusho22/stockia-webapp
-          ref: ${{ inputs.webapp_ref || 'feature/platform-api' }}
+          ref: ${{ steps.webapp_ref.outputs.ref }}
           path: webapp
       - uses: actions/setup-node@v4
         if: steps.webapp.outcome == 'success'

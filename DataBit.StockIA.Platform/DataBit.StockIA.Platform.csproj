@@ -14,26 +14,26 @@
         <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
         <PackageReference Include="Cortex.Mediator" Version="3.1.2" />
         <PackageReference Include="Humanizer" Version="3.0.10" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.13" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.8" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.13" />
         <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.18.0" />
         <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
-        <PackageReference Include="MySql.EntityFrameworkCore" Version="10.0.7" />
-        <!-- Swashbuckle 10.2.0 brings Microsoft.OpenApi 2.4.1 (GHSA-v5pm-xwqc-g5wc); 2.7.5 is the patched version. -->
+        <PackageReference Include="MySql.EntityFrameworkCore" Version="10.0.9" />
+        <!-- GHSA-v5pm-xwqc-g5wc: Microsoft.OpenApi is patched from 2.7.5. -->
         <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.0" />
-        <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.2.0" />
+        <PackageReference Include="Scalar.AspNetCore" Version="2.18.0" />
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.18.0" />
     </ItemGroup>
 
     <!-- Demand model trained in ml/ (Python) and exported to ONNX. -->
     <ItemGroup>
-        <None Include="..\ml\models\demand_model.onnx" Link="DemandForecasting\Infrastructure\MachineLearning\Models\demand_model.onnx" CopyToOutputDirectory="PreserveNewest" />
-        <None Include="..\ml\models\model_metadata.json" Link="DemandForecasting\Infrastructure\MachineLearning\Models\model_metadata.json" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="..\ml\models\demand_model.onnx" Link="MlRecommendations\Infrastructure\MachineLearning\Models\demand_model.onnx" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="..\ml\models\model_metadata.json" Link="MlRecommendations\Infrastructure\MachineLearning\Models\model_metadata.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>

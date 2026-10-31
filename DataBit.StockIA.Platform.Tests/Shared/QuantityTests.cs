@@ -1,3 +1,4 @@
+using DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.ValueObjects;
 using DataBit.StockIA.Platform.Shared.Domain.Model.ValueObjects;
 
 namespace DataBit.StockIA.Platform.Tests.Shared;
@@ -46,8 +47,8 @@ public class QuantityTests
     [Fact]
     public void EnumCode_uses_upper_snake_case()
     {
-        Assert.Equal("LOW_STOCK", DataBit.StockIA.Platform.Alerts.Domain.Model.ValueObjects.AlertType.LowStock.ToCode());
-        Assert.True(EnumCode.TryParse<DataBit.StockIA.Platform.Alerts.Domain.Model.ValueObjects.AlertType>("CRITICAL_STOCK", out var type));
-        Assert.Equal(DataBit.StockIA.Platform.Alerts.Domain.Model.ValueObjects.AlertType.CriticalStock, type);
+        Assert.Equal("LOW_STOCK", DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.ValueObjects.AlertType.LowStock.ToCode());
+        Assert.True(EnumCode.TryParse<DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.ValueObjects.AlertType>("CRITICAL_STOCK", out var type));
+        Assert.Equal(DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.ValueObjects.AlertType.CriticalStock, type);
     }
 }

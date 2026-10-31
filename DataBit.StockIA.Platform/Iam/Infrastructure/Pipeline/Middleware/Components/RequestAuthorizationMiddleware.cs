@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using DataBit.StockIA.Platform.Iam.Application.Internal.OutboundServices;
+using DataBit.StockIA.Platform.Iam.Domain.Model.Aggregates;
 using DataBit.StockIA.Platform.Iam.Infrastructure.Pipeline.Middleware.Attributes;
 
 namespace DataBit.StockIA.Platform.Iam.Infrastructure.Pipeline.Middleware.Components;

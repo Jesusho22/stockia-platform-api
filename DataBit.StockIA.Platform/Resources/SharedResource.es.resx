@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="InvalidModelStateTitle" xml:space="preserve">
+    <value>Uno o más datos enviados no son válidos.</value>
+  </data>
+  <data name="UnexpectedServerError" xml:space="preserve">
+    <value>Error inesperado del servidor</value>
+  </data>
+  <data name="UnexpectedErrorProcessingRequest" xml:space="preserve">
+    <value>Ocurrió un error inesperado al procesar tu solicitud.</value>
+  </data>
+  <data name="The password needs letters and numbers." xml:space="preserve">
+    <value>La contraseña necesita letras y números.</value>
+  </data>
+  <data name="Enter a valid phone number." xml:space="preserve">
+    <value>Ingresa un número de teléfono válido.</value>
+  </data>
+  <data name="The code has 6 digits." xml:space="preserve">
+    <value>El código tiene 6 dígitos.</value>
+  </data>
+</root>

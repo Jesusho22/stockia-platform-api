@@ -1,23 +1,23 @@
 using Microsoft.EntityFrameworkCore;
-using DataBit.StockIA.Platform.Alerts.Interfaces.Acl;
-using DataBit.StockIA.Platform.DemandForecasting.Application.CommandServices;
-using DataBit.StockIA.Platform.DemandForecasting.Domain.Model.Commands;
-using DataBit.StockIA.Platform.DemandForecasting.Domain.Services;
 using DataBit.StockIA.Platform.Iam.Application.Internal.OutboundServices;
 using DataBit.StockIA.Platform.Iam.Domain.Model.Aggregates;
 using DataBit.StockIA.Platform.Iam.Domain.Model.ValueObjects;
-using DataBit.StockIA.Platform.ProductInventory.Domain.Model.Aggregates;
-using DataBit.StockIA.Platform.ProductInventory.Domain.Model.Entities;
-using DataBit.StockIA.Platform.ProductInventory.Domain.Model.ValueObjects;
-using DataBit.StockIA.Platform.ProductInventory.Domain.Services;
-using DataBit.StockIA.Platform.SalesOrder.Domain.Model.Aggregates;
-using DataBit.StockIA.Platform.SalesOrder.Domain.Model.Entities;
-using DataBit.StockIA.Platform.SalesOrder.Domain.Model.ValueObjects;
+using DataBit.StockIA.Platform.MlRecommendations.Application.Services;
+using DataBit.StockIA.Platform.MlRecommendations.Domain.Model.Commands;
+using DataBit.StockIA.Platform.MlRecommendations.Domain.Services;
+using DataBit.StockIA.Platform.NotificationsMessaging.Interfaces.ACL;
+using DataBit.StockIA.Platform.RecipesManagement.Domain.Model.Aggregates;
+using DataBit.StockIA.Platform.RecipesManagement.Domain.Model.Entities;
+using DataBit.StockIA.Platform.RecipesManagement.Domain.Model.ValueObjects;
+using DataBit.StockIA.Platform.RestaurantRegistration.Domain.Model.Aggregates;
 using DataBit.StockIA.Platform.Shared.Application;
 using DataBit.StockIA.Platform.Shared.Domain.Model.ValueObjects;
-using DataBit.StockIA.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration;
-using DataBit.StockIA.Platform.Subscription.Domain.Model.Aggregates;
-using DataBit.StockIA.Platform.Subscription.Interfaces.Acl;
+using DataBit.StockIA.Platform.Shared.Infrastructure.Persistence.EFC.Configuration;
+using DataBit.StockIA.Platform.StockManagement.Domain.Model.Aggregates;
+using DataBit.StockIA.Platform.StockManagement.Domain.Model.ValueObjects;
+using DataBit.StockIA.Platform.StockManagement.Domain.Services;
+using DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.Aggregates;
+using DataBit.StockIA.Platform.SubscriptionPayments.Interfaces.ACL;
 
 namespace DataBit.StockIA.Platform.Shared.Infrastructure.Seeding;
 
@@ -34,7 +34,7 @@ public class DatabaseSeeder(
     AppDbContext context,
     IHashingService hashingService,
     ISubscriptionContextFacade subscriptionContextFacade,
-    IAlertsContextFacade alertsContextFacade,
+    INotificationsMessagingContextFacade notificationsMessagingContextFacade,
     IDemandForecastCommandService demandForecastCommandService,
     IRestaurantClock clock,
     IConfiguration configuration,
@@ -50,14 +50,17 @@ public class DatabaseSeeder(
             await SeedDemoRestaurantAsync(cancellationToken);
     }
 
-    /// <summary>MySQL may still be starting (docker compose, CI): retry for about a minute.</summary>
+    /// <summary>
+    ///     Applies the EF Core migrations (Shared/Infrastructure/Persistence/EFC/Migrations).
+    ///     MySQL may still be starting (docker compose, CI): retry for about a minute.
+    /// </summary>
     private async Task CreateDatabaseAsync(CancellationToken cancellationToken)
     {
         for (var attempt = 1; ; attempt++)
         {
             try
             {
-                await context.Database.EnsureCreatedAsync(cancellationToken);
+                await context.Database.MigrateAsync(cancellationToken);
                 return;
             }
             catch (Exception exception) when (attempt < 20)
@@ -130,8 +133,10 @@ public class DatabaseSeeder(
 
         SeedSalesHistory(restaurant.Id, recipes, items, today);
         await context.SaveChangesAsync(cancellationToken);
+        SeedConsumptionLog(restaurant.Id, recipes, items, today);
+        await context.SaveChangesAsync(cancellationToken);
 
-        await alertsContextFacade.EvaluateInventoryAlerts(restaurant.Id, cancellationToken);
+        await notificationsMessagingContextFacade.EvaluateInventoryAlerts(restaurant.Id, cancellationToken);
         try
         {
             await demandForecastCommandService.Handle(new GenerateDemandForecastCommand(restaurant.Id), cancellationToken);
@@ -173,7 +178,36 @@ public class DatabaseSeeder(
 
             var saleDate = new DateTimeOffset(day.ToDateTime(new TimeOnly(21, 0)), offset).ToUniversalTime();
             context.Set<Sale>().Add(new Sale(restaurantId, saleDate, SaleChannel.Pos, lines.Select(line =>
-                new SaleLineItem(line.recipe.Id, line.recipe.DishName, StockAllocationService.RecipePrice(line.recipe, items, today), line.units))));
+                new SaleLineItem(line.recipe.Id, line.recipe.DishName, StockAllocationService.PriceOf(RequirementsOf(line.recipe), items, today), line.units))));
         }
     }
+
+    /// <summary>
+    ///     Demo consumption log of the last two weeks (what those sales took from
+    ///     each lot), so the weekly savings of Analytics &amp; Dashboard have data.
+    /// </summary>
+    private void SeedConsumptionLog(int restaurantId, IReadOnlyList<Recipe> recipes, IReadOnlyCollection<InventoryItem> items, DateOnly today)
+    {
+        var offset = clock.Now.Offset;
+        var from = new DateTimeOffset(today.AddDays(-13).ToDateTime(TimeOnly.MinValue), offset).ToUniversalTime();
+        var recentSales = context.Set<Sale>().Local.Where(sale => sale.RestaurantId == restaurantId && sale.SaleDate >= from).ToList();
+        foreach (var sale in recentSales)
+        {
+            var day = DateOnly.FromDateTime(sale.SaleDate.ToOffset(offset).DateTime);
+            foreach (var line in sale.LineItems)
+            {
+                var recipe = recipes.First(candidate => candidate.Id == line.RecipeId);
+                foreach (var ingredient in recipe.Ingredients)
+                {
+                    var lot = items.First(item => item.Id == ingredient.InventoryItemId);
+                    if (lot.IsExpired(day)) continue;
+                    context.Set<StockConsumption>().Add(new StockConsumption(restaurantId, lot, ingredient.QuantityRequired * line.Quantity, day));
+                }
+            }
+        }
+    }
+
+    private static List<StockRequirement> RequirementsOf(Recipe recipe) =>
+        recipe.Ingredients.Select(line => new StockRequirement(line.InventoryItemId, line.InventoryItemName, line.Unit, line.QuantityRequired))
+            .ToList();
 }
