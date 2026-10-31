@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using ProblemDetailsFactory = DataBit.StockIA.Platform.Shared.Interfaces.Rest.ProblemDetails.ProblemDetailsFactory;
+using ProblemDetailsFactory = DataBit.StockIA.Platform.Shared.Interfaces.REST.ProblemDetails.ProblemDetailsFactory;
 using DataBit.StockIA.Platform.Shared.Application.Patterns;
 using DataBit.StockIA.Platform.Shared.Interfaces.REST.ProblemDetails;
 
