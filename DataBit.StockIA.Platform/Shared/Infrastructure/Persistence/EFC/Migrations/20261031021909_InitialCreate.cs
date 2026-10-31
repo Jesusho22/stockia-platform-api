@@ -7,7 +7,7 @@ using MySql.EntityFrameworkCore.Metadata;
 namespace DataBit.StockIA.Platform.Shared.Infrastructure.Persistence.EFC.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreateretry : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

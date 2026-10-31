@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataBit.StockIA.Platform.Shared.Infrastructure.Persistence.EFC.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261031021909_InitialCreateretry")]
-    partial class InitialCreateretry
+    [Migration("20261031021909_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

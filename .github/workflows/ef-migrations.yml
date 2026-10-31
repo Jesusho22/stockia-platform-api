@@ -24,7 +24,7 @@ jobs:
           dotnet-version: "10.0.x"
       - name: Add the migration
         run: |
-          name="$(tr -cd 'A-Za-z0-9' < .github/ef-migration-request)"
+          name="$(head -n 1 .github/ef-migration-request | tr -cd 'A-Za-z0-9')"
           [ -n "$name" ] || { echo "::error::The request file is empty"; exit 1; }
           dotnet tool install --global dotnet-ef --version 10.0.13
           dotnet restore DataBit.StockIA.Platform.sln
