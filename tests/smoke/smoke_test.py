@@ -51,7 +51,8 @@ status, plans, _ = call("GET", "/plans")
 check("plans are public", status == 200 and [plan["name"] for plan in plans] == ["Esencial", "Profesional", "IoT Completo"], plans)
 
 status, body, _ = call("POST", "/authentication/sign-in", body={"email": "admin@databitecorp.com", "password": "wrong-pass1"})
-check("wrong password -> 401 InvalidCredentials", status == 401 and body["title"] == "InvalidCredentials", body)
+check("wrong password -> 401 InvalidCredentials with attempts left", status == 401 and body["title"] == "InvalidCredentials"
+      and body.get("details", {}).get("remainingAttempts") == 4, body)
 
 status, admin, _ = call("POST", "/authentication/sign-in", body={"email": "ADMIN@databitecorp.com", "password": "stockia123"})
 check("admin sign-in", status == 200 and admin["role"] == "ADMIN" and admin["token"] and admin["restaurantName"].startswith("DataBite"), admin)
@@ -166,11 +167,11 @@ check("remove member", status == 204, status)
 status, body, _ = call("DELETE", f"/users/{admin['id']}", token)
 check("cannot remove yourself", status == 409 and body["title"] == "CannotRemoveYourself", body)
 
-status, body, _ = call("POST", "/authentication/sign-up", body={"fullName": "Luis Paz", "restaurantName": "La Esquina", "email": "admin@databitecorp.com", "password": "Esquina2026"})
+status, body, _ = call("POST", "/restaurant-registrations", body={"fullName": "Luis Paz", "restaurantName": "La Esquina", "email": "admin@databitecorp.com", "password": "Esquina2026"})
 check("sign-up email taken -> 409", status == 409 and body["title"] == "EmailAlreadyTaken", body)
-status, body, _ = call("POST", "/authentication/sign-up", body={"fullName": "Luis Paz", "restaurantName": "La Esquina", "email": "luis@laesquina.pe", "password": "abc"})
+status, body, _ = call("POST", "/restaurant-registrations", body={"fullName": "Luis Paz", "restaurantName": "La Esquina", "email": "luis@laesquina.pe", "password": "abc"})
 check("sign-up weak password -> 400", status == 400, body)
-status, owner, _ = call("POST", "/authentication/sign-up", body={"fullName": "Luis Paz", "restaurantName": "La Esquina", "email": "luis@laesquina.pe", "password": "Esquina2026"})
+status, owner, _ = call("POST", "/restaurant-registrations", body={"fullName": "Luis Paz", "restaurantName": "La Esquina", "email": "luis@laesquina.pe", "password": "Esquina2026"})
 check("sign-up creates restaurant and admin", status == 201 and owner["role"] == "ADMIN" and owner["restaurantName"] == "La Esquina", owner)
 status, subscription, _ = call("GET", "/subscriptions/current", owner["token"])
 check("new restaurant gets the free plan", status == 200 and subscription["planId"] == plans[0]["id"], subscription)
@@ -183,6 +184,54 @@ check("forecast without recipes -> 422", status == 422 and body["title"] == "NoD
 
 status, summary, _ = call("GET", "/dashboard/summary", token)
 check("dashboard summary", status == 200 and summary["registeredSupplies"] == 11 and summary["pendingAlerts"] > 0, summary)
+status, savings, _ = call("GET", "/dashboard/weekly-savings", token)
+check("weekly savings (rescued stock and waste of the week)", status == 200 and Decimal(str(savings["rescuedValue"])) > 0
+      and Decimal(str(savings["wasteValue"])) == Decimal("297") and savings["estimatedSavings"] >= savings["rescuedValue"]
+      and any(line["itemName"] == "Tomate" for line in savings["topRescued"]), savings)
+status, body, _ = call("GET", "/dashboard/weekly-savings", etoken)
+check("employee cannot see weekly savings", status == 403, body)
+
+# Account Lock Service: 5 wrong passwords lock the account; the Administrator can unlock it.
+status, locked_member, _ = call("POST", "/users", token, {"fullName": "Pedro Rojas", "email": "pedro@databitecorp.com", "role": "EMPLOYEE"})
+check("invite member to lock", status == 201, locked_member)
+answers = [call("POST", "/authentication/sign-in", body={"email": "pedro@databitecorp.com", "password": "wrong-pass1"}) for _ in range(5)]
+check("4 wrong passwords count down", [a[1].get("details", {}).get("remainingAttempts") for a in answers[:4]] == [4, 3, 2, 1], [a[1] for a in answers])
+check("5th wrong password -> 423 AccountLocked", answers[4][0] == 423 and answers[4][1]["title"] == "AccountLocked"
+      and answers[4][1]["details"]["minutesLeft"] == 15, answers[4])
+status, body, _ = call("POST", "/authentication/sign-in", body={"email": "pedro@databitecorp.com", "password": "stockia123"})
+check("locked even with the right password", status == 423, body)
+status, team, _ = call("GET", "/users", token)
+check("team shows the lock", any(user["email"] == "pedro@databitecorp.com" and user["locked"] for user in team), team)
+status, unlocked, _ = call("POST", f"/users/{locked_member['id']}/unlock", token)
+check("admin unlocks", status == 200 and not unlocked["locked"], unlocked)
+status, body, _ = call("POST", "/authentication/sign-in", body={"email": "pedro@databitecorp.com", "password": "stockia123"})
+check("sign-in after unlock", status == 200, body)
+
+# Password Reset Service: recovery link by (simulated) email.
+status, reset, _ = call("POST", "/authentication/password-reset-requests", body={"email": "nadie@ejemplo.com"})
+check("reset for unknown email -> same 202 answer, no email", status == 202 and reset["simulatedEmail"] is None, reset)
+for _ in range(5):
+    call("POST", "/authentication/sign-in", body={"email": "pedro@databitecorp.com", "password": "wrong-pass1"})
+status, reset, _ = call("POST", "/authentication/password-reset-requests", body={"email": "Pedro@DataBiteCorp.com"})
+email = (reset or {}).get("simulatedEmail") or {}
+check("reset link sent (simulated email)", status == 202 and reset["sentTo"] == "p***o@databitecorp.com" and len(email.get("code", "")) == 6
+      and "/auth/reset-password?email=pedro%40databitecorp.com&code=" in email.get("resetLink", ""), reset)
+wrong = "000000" if email.get("code") != "000000" else "111111"
+status, body, _ = call("POST", "/authentication/password-resets", body={"email": "pedro@databitecorp.com", "code": wrong, "newPassword": "Pedro2026"})
+check("wrong code -> 422 InvalidResetCode", status == 422 and body["title"] == "InvalidResetCode", body)
+status, _, _ = call("POST", "/authentication/password-resets", body={"email": "pedro@databitecorp.com", "code": email.get("code"), "newPassword": "Pedro2026"})
+check("password reset with the link code", status == 204, status)
+status, body, _ = call("POST", "/authentication/sign-in", body={"email": "pedro@databitecorp.com", "password": "Pedro2026"})
+check("reset also unlocks; new password works", status == 200, body)
+status, body, _ = call("POST", "/authentication/password-resets", body={"email": "pedro@databitecorp.com", "code": email.get("code"), "newPassword": "Otra2026x"})
+check("a reset code works only once", status == 422, body)
+
+root = API.rsplit("/api/", 1)[0]
+with urllib.request.urlopen(f"{root}/openapi/v1.json", timeout=30) as response:
+    document = json.loads(response.read())
+check("OpenAPI document with kebab-case routes", "/api/v1/restaurant-registrations" in document["paths"]
+      and "/api/v1/dashboard/weekly-savings" in document["paths"] and "Bearer" in document["components"]["securitySchemes"],
+      list(document.get("paths", {}))[:40])
 
 status, _, headers = call("OPTIONS", "/inventory-items", headers={"Origin": "http://localhost:4173", "Access-Control-Request-Method": "GET",
                                                                   "Access-Control-Request-Headers": "authorization"})
