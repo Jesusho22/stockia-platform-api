@@ -12,10 +12,10 @@ eventos de dominio y JWT propio con BCrypt.
 
 | Verificación (GitHub Actions) | Resultado |
 |---|---|
-| Compilación + pruebas unitarias xUnit (reglas de dominio y paridad Python ↔ C# del modelo) | ✅ __UNIT__ |
+| Compilación + pruebas unitarias xUnit (reglas de dominio y paridad Python ↔ C# del modelo) | ✅ 42 pruebas |
 | Migraciones EF Core al día con el modelo | ✅ |
-| Smoke test de la API contra MySQL 8.4 real | ✅ __SMOKE__ |
-| Web App (Vue) + API + MySQL de punta a punta con Playwright | ✅ __E2E__ |
+| Smoke test de la API contra MySQL 8.4 real | ✅ 69/69 |
+| Web App (Vue) + API + MySQL de punta a punta con Playwright | ✅ 34/34 |
 | Pipeline ML: pruebas + reentrenamiento con clima real de Open-Meteo | ✅ WAPE 0.287 vs 0.305 del baseline |
 
 ---
@@ -228,8 +228,8 @@ La Web App tiene las mismas 8 carpetas de bounded context (`iam`, `restaurant-re
 | Qué | Dónde | Cómo correrlo |
 |---|---|---|
 | Pruebas unitarias: Quantity, asignación de stock, calendario peruano, alertas, bloqueo y recuperación de cuenta, ahorro semanal y **paridad del modelo ONNX con Python** | `DataBit.StockIA.Platform.Tests` (una carpeta por bounded context) | `dotnet test` |
-| Smoke test de la API (__SMOKE_N__ verificaciones) | `tests/smoke/smoke_test.py` | `python tests/smoke/smoke_test.py http://localhost:5000/api/v1` |
-| E2E Web App + API (Playwright, __E2E_N__ verificaciones, capturas en `tests/e2e/screenshots`) | `tests/e2e/webapp_e2e.py` | `python tests/e2e/webapp_e2e.py http://localhost:4173` |
+| Smoke test de la API (69 verificaciones) | `tests/smoke/smoke_test.py` | `python tests/smoke/smoke_test.py http://localhost:5000/api/v1` |
+| E2E Web App + API (Playwright, 34 verificaciones, capturas en `tests/e2e/screenshots`) | `tests/e2e/webapp_e2e.py` | `python tests/e2e/webapp_e2e.py http://localhost:4173` |
 | Pruebas del pipeline ML (16) | `ml/tests` | `cd ml && python -m pytest` |
 
 Workflows de GitHub Actions:
