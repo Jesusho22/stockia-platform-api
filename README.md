@@ -1,123 +1,157 @@
 # StockIA Platform API
 
-Backend de **StockIA** (DataBite Corp): API REST en **ASP.NET Core (.NET 10)** que da servicio a la
-Web Application en Vue ([Jesusho22/stockia-webapp](https://github.com/Jesusho22/stockia-webapp), rama
-`feature/platform-api`), con un **modelo de Machine Learning** de pronóstico de demanda entrenado en Python
-y ejecutado dentro de la API en formato ONNX.
+Backend de **StockIA** (DataBite Corp): API REST en **ASP.NET Core (.NET 10)** para la Web Application en Vue
+([Jesusho22/stockia-webapp](https://github.com/Jesusho22/stockia-webapp)), con un **modelo de Machine Learning**
+de pronóstico de demanda entrenado en Python y ejecutado dentro de la API en formato ONNX.
 
-La estructura sigue el proyecto guía **QULLQA**: monolito modular, un `AppDbContext`, DDD por
-bounded context, EF Core + MySQL, Cortex.Mediator para eventos de dominio, JWT propio con BCrypt,
-`Result<T>` + ProblemDetails, recursos `.resx` en inglés/español y Swagger.
+El código está organizado en los **8 Bounded Contexts del Capítulo IV del informe** y sigue la estructura del
+ejemplo del curso (`catch-up-platform`) y del proyecto guía **QULLQA**: monolito modular con un `AppDbContext`,
+DDD por bounded context, EF Core + MySQL con **migraciones**, rutas kebab-case (`api/v1/[controller]`),
+OpenAPI + **Scalar**, `Result` + ProblemDetails, recursos `.resx` en inglés/español, Cortex.Mediator para
+eventos de dominio y JWT propio con BCrypt.
 
 | Verificación (GitHub Actions) | Resultado |
 |---|---|
-| Compilación + pruebas unitarias xUnit (incluye paridad Python ↔ C# del modelo) | ✅ |
-| Smoke test de la API contra MySQL 8.4 real | ✅ 53/53 |
-| Web App (Vue) + API + MySQL de punta a punta con Playwright | ✅ 25/25 |
+| Compilación + pruebas unitarias xUnit (reglas de dominio y paridad Python ↔ C# del modelo) | ✅ __UNIT__ |
+| Migraciones EF Core al día con el modelo | ✅ |
+| Smoke test de la API contra MySQL 8.4 real | ✅ __SMOKE__ |
+| Web App (Vue) + API + MySQL de punta a punta con Playwright | ✅ __E2E__ |
 | Pipeline ML: pruebas + reentrenamiento con clima real de Open-Meteo | ✅ WAPE 0.287 vs 0.305 del baseline |
 
 ---
 
 ## 1. Arquitectura
 
+### 1.1 Bounded Contexts (Capítulo IV)
+
+| Carpeta | Bounded Context | Qué hace | Componentes del C4 que implementa |
+|---|---|---|---|
+| `Iam/` | Identity & Access Management | Inicio de sesión con JWT, roles, equipo, cambio y **recuperación de contraseña**, **bloqueo de cuenta** | Login Controller, Account Lock Service, Session Manager, Password Reset Service, Password Change Service |
+| `RestaurantRegistration/` | Restaurant Registration | Alta del restaurante con su dueño (primer Administrador) y datos del restaurante | Restaurant Onboarding Controller, Plan Selection, Profile Management |
+| `SubscriptionPayments/` | Subscription & Payments | Planes y suscripción (pago simulado) | Subscription Controller, Stripe Payment Adapter (simulado), Plan Validation |
+| `StockManagement/` | Stock Management | Insumos (lotes) con vencimiento, estado y costo; descuento de stock; registro de consumos | Add / Modify / Remove Supplies, Inventory Aggregator |
+| `RecipesManagement/` | Recipes Management | Recetas (platos) y **ventas**: valida stock y descuenta insumos al vender ("Dish Sold") | Recipe CRUD Controller, Ingredient Deduction Engine |
+| `MlRecommendations/` | ML & Recommendations | Pronóstico de demanda con el modelo ONNX, clima y calendario peruano; recomendaciones de compra y menú | Sales Data Collector, Demand Forecasting Engine, Weather API Adapter, Menu Recommendation Engine |
+| `NotificationsMessaging/` | Notifications & Messaging | Alertas de stock y vencimiento, entrega por WhatsApp/correo (simulada), correos transaccionales | Alert Event Listener, SendGrid Adapter (simulado) |
+| `AnalyticsDashboard/` | Analytics & Dashboard | KPIs del panel y **ahorro semanal** (solo Administrador) | Metrics View Updater, Alerts Panel, Demand Prediction View, Weekly Savings Calculator |
+| `Shared/` | — | `Result`, `Quantity` (32 decimales), UnitOfWork, `AppDbContext`, migraciones, convención kebab-case, seed demo | — |
+
+Descartados por el equipo (StockIA trabaja con **un solo restaurante**): Gamification Engine, Multi-Branch
+Consolidator y Account Deactivation Component.
+
+### 1.2 Capas de cada bounded context
+
 ```
-DataBit.StockIA.Platform/
-├── Shared/               Result<T>, Quantity (32 decimales), UnitOfWork, AppDbContext, JWT/usuario actual,
-│                         reloj de Lima, ProblemDetails, middleware de errores, seed de datos demo
-├── Iam/                  Usuarios, restaurante, sign-in/sign-up, roles, invitaciones, contraseña
-├── Subscription/         Planes y suscripción del restaurante (pasarela de pago simulada)
-├── ProductInventory/     Insumos (lotes con vencimiento y costo) y recetas (platos)
-├── SalesOrder/           Ventas: valida y descuenta stock por receta, anulación
-├── DemandForecasting/    Pronóstico de demanda (modelo ONNX + clima Open-Meteo + calendario peruano)
-├── Alerts/               Alertas de inventario y recomendaciones de compra / menú
-├── Dashboard/            Resumen que compone los demás contextos (solo lectura)
-└── Resources/            Mensajes en/es (.resx)
+<BoundedContext>/
+├── Domain/
+│   ├── Model/Aggregates · Entities · ValueObjects · Commands · Queries · Events
+│   ├── Repositories/          interfaces
+│   └── Services/              reglas puras (p. ej. StockAllocationService, AccountLockService)
+├── Application/
+│   ├── Errors/                enum de errores del contexto (títulos de los ProblemDetails)
+│   ├── Services/              interfaces I*CommandService / I*QueryService
+│   ├── Internal/CommandServices · QueryServices · EventHandlers · OutboundServices
+│   └── ACL/                   implementación de la facade para otros contextos
+├── Infrastructure/
+│   └── Persistence/EFC/Configuration/Extensions · Repositories   (+ servicios externos)
+├── Interfaces/
+│   ├── ACL/                   I<Contexto>ContextFacade + DTOs que ven los otros contextos
+│   └── REST/                  Controllers · Resources · Transform (assemblers)
+└── Resources/                 <Contexto>Messages.resx / .es.resx
 ```
 
-Cada bounded context tiene las mismas capas que QULLQA:
+Igual que en `catch-up-platform`: `Shared/Application/Patterns/Result.cs`,
+`Shared/Infrastructure/Interfaces/ASP/Configuration/KebabCaseRouteNamingConvention.cs`,
+`Shared/Infrastructure/Persistence/EFC/{Configuration,Interceptors,Migrations,Repositories}`,
+`Resources/SharedResource*.resx`, `AddOpenApi` + `MapScalarApiReference`, `AddProblemDetails` +
+`UseExceptionHandler` y `Database.Migrate()` al arrancar.
 
-| Capa | Contenido |
-|---|---|
-| `Domain` | Aggregates, Entities, ValueObjects, Commands, Queries, Errors, Events, interfaces de Repositories y servicios de dominio (reglas puras, sin EF) |
-| `Application` | CommandServices, QueryServices, EventHandlers, facades ACL (`I<Contexto>ContextFacade`) y OutboundServices |
-| `Infrastructure` | Repositorios EF Core, configuración del modelo, servicios externos (ONNX, Open-Meteo, pago, notificaciones) |
-| `Interfaces` | Controllers REST, Resources (DTO) y Assemblers |
+### 1.3 Comunicación entre contextos
 
-Los contextos no se referencian entre sí: se comunican mediante **facades ACL** (por ejemplo, SalesOrder
-llama a `IProductInventoryContextFacade.CheckRecipeSale` antes de registrar la venta) y **eventos de
-dominio** (`StockLevelChangedEvent` → Alerts genera alertas; `DemandForecastGeneratedEvent` → Alerts
-genera recomendaciones).
+Un contexto nunca usa los repositorios ni las tablas de otro: llama a su **facade ACL**
+(`Interfaces/ACL`), normalmente a través de un *outbound service* propio (`ExternalStockService`,
+`ExternalIamService`…). Ejemplos:
+
+- Recipes Management → Stock Management: `CheckAvailability`, `DeductStock` y `PricesOf` al vender o listar platos.
+- Restaurant Registration → IAM (`CreateOwnerAccount`) y → Subscription & Payments (`CreateDefaultSubscription`) al registrar un restaurante, en una sola transacción.
+- IAM → Notifications & Messaging (`SendEmail`) para el enlace de recuperación de contraseña.
+- Analytics & Dashboard → Stock, Recipes, ML y Notifications para el resumen y el ahorro semanal.
+
+Eventos de dominio: `StockLevelChangedEvent` (Stock → Notifications genera alertas) y
+`DemandForecastGeneratedEvent` (ML → recomendaciones).
 
 Detalles técnicos:
-- **Base de datos:** MySQL 8 con `MySql.EntityFrameworkCore`. Las tablas se crean con `EnsureCreated` al
-  arrancar (igual que QULLQA, sin migraciones), con nombres en `snake_case`.
-- **Cantidades con 32 decimales:** `Quantity` es un entero `BigInteger` escalado ×10^32. Se guarda como
-  `varchar(80)` y viaja en JSON como texto (`"1.12345678901234567890123456789012"`); también acepta números
-  JSON. Ni `decimal` ni `DECIMAL` de MySQL llegan a 32 decimales, por eso no se usan.
-- **Zona horaria:** las fechas de negocio (vencimientos, "hoy") se calculan con la hora de Lima
-  (`IRestaurantClock`); las ventas se guardan en UTC.
-- **Errores:** respuestas `application/problem+json`; `title` es el código del error
-  (`CannotSell`, `InvalidCredentials`…) y `extensions.details` trae los datos extra (por ejemplo, los
-  insumos faltantes). La Web App traduce esos códigos con i18n.
+- **Base de datos:** MySQL 8 con `MySql.EntityFrameworkCore`, tablas en `snake_case`, esquema creado por las
+  migraciones de `Shared/Infrastructure/Persistence/EFC/Migrations` (ver 6.1).
+- **Cantidades con 32 decimales:** `Quantity` es un entero `BigInteger` escalado ×10^32, guardado como
+  `varchar(80)` y enviado en JSON como texto (`"1.12345678901234567890123456789012"`).
+- **Zona horaria:** las fechas de negocio se calculan con la hora de Lima (`IRestaurantClock`); las ventas se guardan en UTC.
+- **Errores:** `application/problem+json`; `title` es el código (`CannotSell`, `AccountLocked`…) y
+  `details` trae datos extra (insumos faltantes, intentos restantes, minutos de bloqueo).
 
 ---
 
 ## 2. Endpoints
 
-Todas las rutas empiezan por `/api/v1`. Salvo las marcadas como públicas, requieren
-`Authorization: Bearer <token>`. **ADMIN** = solo Administrador (los empleados reciben 403).
-Swagger: `http://localhost:5000/swagger`.
+Todas las rutas empiezan por `/api/v1` y siguen la convención kebab-case. Salvo las públicas, requieren
+`Authorization: Bearer <token>`. **ADMIN** = solo Administrador (el Empleado recibe 403).
+Documentación interactiva: **`http://localhost:5000/scalar`** (OpenAPI en `/openapi/v1.json`; `/swagger` redirige ahí).
 
 | Contexto | Método y ruta | Acceso | Descripción |
 |---|---|---|---|
 | — | `GET /health` | Pública | Estado de la API y del modelo ML |
-| IAM | `POST /authentication/sign-in` | Pública | Devuelve el usuario + JWT |
-| IAM | `POST /authentication/sign-up` | Pública | Crea restaurante + primer Administrador + plan gratuito |
-| IAM | `GET /users` | ADMIN | Equipo del restaurante |
+| IAM | `POST /authentication/sign-in` | Pública | Usuario + JWT. 401 con `details.remainingAttempts`; tras 5 errores, 423 `AccountLocked` (15 min) |
+| IAM | `POST /authentication/password-reset-requests` | Pública | Envía el enlace de recuperación por correo (misma respuesta exista o no el correo) |
+| IAM | `POST /authentication/password-resets` | Pública | Nueva contraseña con el código del enlace; también desbloquea la cuenta |
+| IAM | `GET /users` | ADMIN | Equipo del restaurante (incluye `locked`) |
 | IAM | `GET /users/me`, `GET /users/{id}` | Usuario | Perfil |
 | IAM | `POST /users` | ADMIN | Invita un miembro (contraseña temporal `stockia123`) |
-| IAM | `PATCH /users/{id}` | El propio usuario | Nombre y email |
-| IAM | `POST /users/{id}/change-password` | El propio usuario | Verifica la contraseña actual |
-| IAM | `PATCH /users/{id}/role`, `DELETE /users/{id}` | ADMIN | Siempre queda al menos un Administrador |
-| IAM | `GET /restaurants/current` / `PUT` | Usuario / ADMIN | Datos del restaurante |
-| Subscription | `GET /plans` | Pública | Planes (Esencial, Profesional, IoT Completo) |
-| Subscription | `GET /subscriptions/current`, `POST /subscriptions` | ADMIN | Plan actual / cambiar plan |
-| Inventory | `GET/POST /inventory-items`, `GET/PUT/DELETE /inventory-items/{id}` | Usuario | Insumos (lotes) |
-| Inventory | `GET/POST /recipes`, `PUT/DELETE /recipes/{id}` | Usuario | Platos; `price` = suma del costo de sus ingredientes |
-| Sales | `GET /sales?from&to`, `GET /sales/{id}` | Usuario | Historial (más reciente primero) |
-| Sales | `POST /sales` | Usuario | `{recipeId, quantity, channel}`; 422 `CannotSell` si falta stock |
-| Sales | `POST /sales/{id}/void` | Usuario | Anula y devuelve el stock; 409 si ya estaba anulada |
-| Forecast | `GET /demand-forecasts`, `GET /demand-forecasts/latest` | Usuario | Pronósticos |
-| Forecast | `POST /demand-forecasts` | Usuario | `{horizonDays}` (1–7) genera uno nuevo |
-| Forecast | `GET /demand-forecasts/model` | Usuario | Versión, métricas y estado del modelo |
-| Alerts | `GET/POST /alerts`, `PUT/DELETE /alerts/{id}` | Usuario | Alertas |
-| Alerts | `POST /alerts/{id}/deliveries`, `POST /alerts/{id}/acknowledge` | Usuario | Envío por canal / confirmar lectura |
-| Alerts | `GET /recommendations`, `POST /recommendations/{id}/apply` | ADMIN | Recomendaciones de compra y menú |
-| Dashboard | `GET /dashboard/summary` | Usuario | KPIs del día |
+| IAM | `PATCH /users/{id}`, `POST /users/{id}/change-password` | El propio usuario | Perfil y cambio de contraseña (verifica la actual) |
+| IAM | `PATCH /users/{id}/role`, `POST /users/{id}/unlock`, `DELETE /users/{id}` | ADMIN | Rol, desbloqueo y retiro (siempre queda un Administrador) |
+| Restaurant Registration | `POST /restaurant-registrations` | Pública | Registra restaurante + dueño (Administrador) + plan gratuito y devuelve el JWT |
+| Restaurant Registration | `GET /restaurants/current` / `PUT` | Usuario / ADMIN | Datos del restaurante |
+| Subscription & Payments | `GET /plans` | Pública | Planes (Esencial, Profesional, IoT Completo) |
+| Subscription & Payments | `GET /subscriptions/current`, `POST /subscriptions` | ADMIN | Plan actual / cambiar plan |
+| Stock Management | `GET/POST /inventory-items`, `GET/PUT/DELETE /inventory-items/{id}` | Usuario | Insumos (lotes) |
+| Recipes Management | `GET/POST /recipes`, `GET/PUT/DELETE /recipes/{id}` | Usuario | Platos; `price` = suma del costo de sus ingredientes |
+| Recipes Management | `GET /sales?from&to`, `GET /sales/{id}` | Usuario | Historial (más reciente primero) |
+| Recipes Management | `POST /sales` | Usuario | `{recipeId, quantity, channel}`; 422 `CannotSell` si falta stock o está vencido |
+| Recipes Management | `POST /sales/{id}/void` | Usuario | Anula la venta (los insumos usados no regresan); 409 si ya estaba anulada |
+| ML & Recommendations | `GET /demand-forecasts`, `GET /demand-forecasts/latest`, `GET /demand-forecasts/model` | Usuario | Pronósticos y estado del modelo |
+| ML & Recommendations | `POST /demand-forecasts` | Usuario | `{horizonDays}` (1–7) genera uno nuevo |
+| ML & Recommendations | `GET /recommendations`, `POST /recommendations/{id}/apply` | ADMIN | Recomendaciones de compra y menú |
+| Notifications & Messaging | `GET/POST /alerts`, `PUT/DELETE /alerts/{id}` | Usuario | Alertas |
+| Notifications & Messaging | `POST /alerts/{id}/deliveries`, `POST /alerts/{id}/acknowledge` | Usuario | Envío por canal / atender |
+| Analytics & Dashboard | `GET /dashboard/summary` | Usuario | KPIs del día |
+| Analytics & Dashboard | `GET /dashboard/weekly-savings` | ADMIN | Ahorro semanal (stock rescatado y merma vs. semana anterior) |
 
-El archivo `DataBit.StockIA.Platform/DataBit.StockIA.Platform.http` trae ejemplos listos para usar.
+`DataBit.StockIA.Platform/DataBit.StockIA.Platform.http` trae ejemplos listos para usar.
 
 ---
 
 ## 3. Reglas de negocio implementadas
 
-- **Ventas sin stock no se registran.** Antes de vender se revisan todos los ingredientes de la receta;
-  si falta alguno, la respuesta es 422 con el motivo de cada insumo: `NOT_FOUND`, `EXPIRED` o
-  `INSUFFICIENT`. No se hacen descuentos parciales.
-- **Lotes vencidos no se usan** y, entre los lotes válidos de un mismo producto, se consume primero
-  el **más fresco** (el que vence más tarde), tal como pidió el equipo.
+- **Ventas sin stock no se registran.** Antes de vender se revisan todos los ingredientes; si falta alguno,
+  422 con el motivo de cada insumo (`NOT_FOUND`, `EXPIRED`, `INSUFFICIENT`). No hay descuentos parciales.
+- **Lotes vencidos no se usan** y, entre los lotes válidos, se consume primero el **más fresco**.
 - **Precio del plato** = Σ (cantidad del ingrediente × costo unitario del lote que se usaría).
 - **Cantidades exactas con 32 decimales** en insumos, recetas y descuentos.
-- **Roles:** Administrador y Empleado. El empleado no ve ni llama a equipo, recomendaciones,
-  suscripción ni datos del restaurante (la API responde 403 aunque se llame directamente).
-- **Alertas automáticas:** sin stock, bajo el mínimo, por vencer (≤ 3 días) y vencido. Se evalúan al
-  cambiar el stock y cada hora (`Alerts:SweepIntervalMinutes`). No se duplican alertas abiertas.
-  Una alerta **CRITICAL** solo se puede confirmar después de entregarse por WhatsApp y email
-  (envío simulado; 409 `NotDelivered` si falta).
-- **Recomendaciones:** cada pronóstico calcula cuánto se necesitará de cada insumo en el horizonte; si
-  supera el stock usable, propone "Comprar X kg de … antes del dd/MM". Si un plato sube ≥ 15 % o
-  baja ≥ 20 % frente a su promedio, propone cambios de menú.
-- **Registro (sign-up):** crea restaurante, Administrador y suscripción gratuita en una sola transacción.
+- **Roles:** Administrador y Empleado. El Empleado no ve equipo, recomendaciones, suscripción, datos
+  financieros del ahorro semanal ni edita el restaurante (la API responde 403 aunque se llame directamente).
+- **Bloqueo de cuenta:** 5 contraseñas incorrectas seguidas bloquean la cuenta 15 minutos (incluso con la
+  contraseña correcta). Un inicio de sesión correcto reinicia el conteo; el Administrador puede desbloquear
+  y la recuperación de contraseña también desbloquea.
+- **Recuperación de contraseña:** código de 6 dígitos dentro de un enlace enviado por correo; vence en
+  30 minutos, admite 5 intentos y sirve una sola vez. Solo se guarda el hash del código. La respuesta no
+  revela si el correo existe.
+- **Ahorro semanal (últimos 7 días):** *stock rescatado* = valor de lo que las ventas usaron de lotes a
+  ≤ 3 días de vencer; *merma* = lotes que vencieron en la semana con stock. Ahorro estimado = rescatado +
+  la reducción de la merma frente a la semana anterior (si bajó).
+- **Alertas automáticas:** sin stock, bajo el mínimo, por vencer (≤ 3 días) y vencido; al cambiar el stock
+  y cada hora. Una alerta **CRITICAL** solo se atiende después de entregarse por WhatsApp y correo.
+- **Recomendaciones:** con cada pronóstico se propone comprar lo que falta ("Comprar X kg de … antes del
+  dd/MM") y cambios de menú si un plato sube ≥ 15 % o baja ≥ 20 %.
+- **Registro del restaurante:** restaurante, Administrador y plan gratuito en una sola transacción.
 
 ---
 
@@ -129,16 +163,19 @@ El archivo `DataBit.StockIA.Platform/DataBit.StockIA.Platform.http` trae ejemplo
 docker compose up --build
 ```
 
-Levanta MySQL 8.4 y la API en `http://localhost:5000` (Swagger en `/swagger`). La base se crea y se
-llena con los datos demo en el primer arranque.
+Levanta MySQL 8.4 y la API en `http://localhost:5000` (Scalar en `/scalar`). Al arrancar se aplican las
+migraciones y se cargan los datos demo. En este modo la API devuelve la copia del correo de recuperación
+(demo), porque el envío de correos es simulado.
 
-### Opción B — .NET local
+### Opción B — .NET local (Rider, Visual Studio o terminal)
 
-Requisitos: .NET SDK 10 y un MySQL 8 local (`root`/`root`, puerto 3306; ver
-`appsettings.Development.json`).
+Requisitos: .NET SDK 10 y un MySQL 8 local (`root`/`root`, puerto 3306; ver `appsettings.Development.json`).
 
 ```bash
 dotnet run --project DataBit.StockIA.Platform
+# Si tu MySQL tiene otra contraseña:
+ConnectionStrings__DefaultConnection="server=127.0.0.1;port=3306;user=root;password=TU_CLAVE;database=stockia;SslMode=Preferred" \
+  dotnet run --project DataBit.StockIA.Platform
 ```
 
 ### Variables de entorno (producción)
@@ -150,10 +187,12 @@ dotnet run --project DataBit.StockIA.Platform
 | `STOCKIA_DB_SSLMODE` | `Required` | `Preferred` en local, `Required` en la nube |
 | `STOCKIA_JWT_SECRET` | 32+ caracteres aleatorios | Firma de los tokens |
 | `STOCKIA_CORS_ORIGINS` | `https://stockia.vercel.app` | Orígenes extra (separados por coma) |
-| `PORT` | `8080` | Puerto (Render/Railway lo definen solos) |
+| `Iam__PasswordReset__ResetLinkBaseUrl` | `https://stockia.vercel.app` | Dominio de la Web App para el enlace del correo |
+| `Iam__PasswordReset__ExposeSimulatedEmail` | `false` | `true` solo en demos: la API devuelve la copia del correo simulado |
+| `PORT` | `8080` | Puerto (Azure, Render y similares) |
 
-Otras opciones en `appsettings.json`: `Seed:DemoData`, `Swagger:Enabled`, `Weather:Enabled`
-(si es `false` usa la climatología de Lima), `Restaurant:TimeZone`, `Iam:InvitationTemporaryPassword`.
+Otras opciones en `appsettings.json`: `Seed:DemoData`, `OpenApi:Enabled`, `Weather:Enabled` (si es `false`
+usa la climatología de Lima), `Restaurant:TimeZone`, `Iam:InvitationTemporaryPassword`.
 
 ### Cuentas demo
 
@@ -162,28 +201,25 @@ Otras opciones en `appsettings.json`: `Seed:DemoData`, `Swagger:Enabled`, `Weath
 | Administrador | `admin@databitecorp.com` | `stockia123` |
 | Empleado | `empleado@databitecorp.com` | `stockia123` |
 
-El seed crea el restaurante "DataBite Corp — Restaurante Demo", 10 insumos (con un lote vencido, uno
-por vencer, uno sin stock y dos lotes de pollo para mostrar la regla del lote más fresco), 4 recetas,
-120 días de ventas y un primer pronóstico ML.
+El seed crea el restaurante "DataBite Corp — Restaurante Demo", 10 insumos (con un lote vencido, uno por
+vencer, uno sin stock y dos lotes de pollo para la regla del lote más fresco), 4 recetas, 120 días de
+ventas, el registro de consumos de las dos últimas semanas (para el ahorro semanal) y un primer pronóstico ML.
 
 ---
 
 ## 5. Conexión con la Web Application
 
-En el repo `stockia-webapp`, rama `feature/platform-api`:
+En el repo `stockia-webapp` (rama `main`):
 
 ```bash
 npm install
 npm run dev          # usa VITE_STOCKIA_API_URL=http://localhost:5000/api/v1 (.env.development)
 ```
 
-Para producción se cambia `VITE_STOCKIA_API_URL` en `.env.production` (o en las variables del hosting,
-por ejemplo Vercel) y se agrega el dominio de la Web App a `STOCKIA_CORS_ORIGINS` (los `*.vercel.app`
-ya están permitidos).
-
-Lo que cambió en la Web App: guarda el JWT en `localStorage` (`stockia.session`), lo envía en cada
-llamada, cierra la sesión con aviso cuando la API responde 401, y las reglas de venta, alertas, pronóstico
-y suscripción ahora se hacen en la API (la Web App solo muestra los mensajes de error traducidos).
+La Web App tiene las mismas 8 carpetas de bounded context (`iam`, `restaurant-registration`,
+`stock-management`, `recipes-management`, `ml-recommendations`, `notifications-messaging`,
+`analytics-dashboard`, `subscription-payments`) más `shared`. Para producción se cambia
+`VITE_STOCKIA_API_URL` y se agrega el dominio a `STOCKIA_CORS_ORIGINS` (los `*.vercel.app` ya están permitidos).
 
 ---
 
@@ -191,16 +227,32 @@ y suscripción ahora se hacen en la API (la Web App solo muestra los mensajes de
 
 | Qué | Dónde | Cómo correrlo |
 |---|---|---|
-| Pruebas unitarias (Quantity, asignación de stock, calendario peruano, alertas, **paridad del modelo ONNX con Python**) | `DataBit.StockIA.Platform.Tests` | `dotnet test` |
-| Smoke test de la API (53 verificaciones) | `tests/smoke/smoke_test.py` | `python tests/smoke/smoke_test.py http://localhost:5000` |
-| E2E Web App + API (Playwright, 25 verificaciones, capturas en `tests/e2e/screenshots`) | `tests/e2e/webapp_e2e.py` | `python tests/e2e/webapp_e2e.py http://localhost:4173` |
+| Pruebas unitarias: Quantity, asignación de stock, calendario peruano, alertas, bloqueo y recuperación de cuenta, ahorro semanal y **paridad del modelo ONNX con Python** | `DataBit.StockIA.Platform.Tests` (una carpeta por bounded context) | `dotnet test` |
+| Smoke test de la API (__SMOKE_N__ verificaciones) | `tests/smoke/smoke_test.py` | `python tests/smoke/smoke_test.py http://localhost:5000/api/v1` |
+| E2E Web App + API (Playwright, __E2E_N__ verificaciones, capturas en `tests/e2e/screenshots`) | `tests/e2e/webapp_e2e.py` | `python tests/e2e/webapp_e2e.py http://localhost:4173` |
 | Pruebas del pipeline ML (16) | `ml/tests` | `cd ml && python -m pytest` |
 
 Workflows de GitHub Actions:
-- **`ci.yml`** (cada push/PR): compila y prueba; luego levanta MySQL + API, corre el smoke test,
-  descarga la Web App, la compila y la prueba con Playwright contra la API real. Se puede lanzar a mano
-  indicando otra rama de la Web App (`webapp_ref`).
+- **`ci.yml`** (cada push/PR): compila, pruebas unitarias, verifica que las migraciones estén al día, levanta
+  MySQL + API, corre el smoke test y prueba la Web App con Playwright contra la API real (usa la rama de la
+  Web App con el mismo nombre si existe; si no, `main`).
+- **`ef-migrations.yml`**: crea una migración y la sube a la misma rama (ver 6.1).
 - **`ml.yml`** (cambios en `ml/` o a mano): pruebas del pipeline y reentrenamiento con clima real.
+- **`deploy-azure.yml`** (push a `main`): publica la API en Azure App Service.
+
+### 6.1 Migraciones
+
+El esquema se crea con migraciones de EF Core (`Shared/Infrastructure/Persistence/EFC/Migrations`) y la API
+las aplica al arrancar (`Database.Migrate()`). Después de cambiar el modelo:
+
+```bash
+dotnet tool install --global dotnet-ef
+dotnet ef migrations add NombreDelCambio --project DataBit.StockIA.Platform \
+  --output-dir Shared/Infrastructure/Persistence/EFC/Migrations
+```
+
+Sin .NET local: escribe el nombre en `.github/ef-migration-request`, haz push y el workflow
+`ef-migrations.yml` agrega la migración a la rama. El CI falla si el modelo tiene cambios sin migración.
 
 ---
 
@@ -266,7 +318,7 @@ cobertura del historial del restaurante.
 1. `train.py` exporta el modelo a **ONNX** (`ml/models/demand_model.onnx`, entrada `features`, salida
    `units`) junto con `model_metadata.json` (versión, orden de variables, métricas) y
    `parity_fixture.json` (casos de prueba).
-2. El `.csproj` copia esos archivos a la salida y `OnnxDemandModel` los carga con
+2. El `.csproj` copia esos archivos a la salida y `OnnxDemandModel` (`MlRecommendations/Infrastructure/MachineLearning`) los carga con
    `Microsoft.ML.OnnxRuntime`; si el orden de variables no coincide, el modelo se desactiva y se usa el
    baseline.
 3. `DemandFeatureBuilder` (C#) arma las mismas 14 variables que `features.py`. La prueba
@@ -316,11 +368,12 @@ Configuración del App Service (*Settings → Environment variables*):
 | Variable | Valor |
 |---|---|
 | `STOCKIA_DB_HOST` | `<servidor>.mysql.database.azure.com` |
-| `STOCKIA_DB_PORT` / `STOCKIA_DB_NAME` | `3306` / `stockia` (la API crea la base y las tablas al arrancar) |
+| `STOCKIA_DB_PORT` / `STOCKIA_DB_NAME` | `3306` / `stockia` (las migraciones crean las tablas al arrancar) |
 | `STOCKIA_DB_USER` / `STOCKIA_DB_PASSWORD` | Administrador del servidor MySQL |
 | `STOCKIA_DB_SSLMODE` | `Required` |
 | `STOCKIA_JWT_SECRET` | 32+ caracteres aleatorios (`openssl rand -base64 48`) |
 | `STOCKIA_CORS_ORIGINS` | URL de la Web App en Vercel |
+| `Iam__PasswordReset__ResetLinkBaseUrl` | URL de la Web App en Vercel |
 
 *Startup command:* `dotnet DataBit.StockIA.Platform.dll`. En GitHub: secreto `AZURE_WEBAPP_PUBLISH_PROFILE`
 (perfil de publicación del App Service) y variable `AZURE_WEBAPP_NAME`. El servidor MySQL debe permitir el
@@ -328,15 +381,13 @@ acceso desde servicios de Azure (*Networking → Allow public access from any Az
 
 Alternativas sin Azure: Render o Railway con el `Dockerfile` (puerto `PORT`) y MySQL en Aiven o Railway.
 
----|---|
-| API | Render o Railway con el `Dockerfile` (puerto `PORT`) |
-| MySQL | Aiven for MySQL (plan gratuito) o Railway MySQL, con `STOCKIA_DB_SSLMODE=Required` |
-| Web App | Vercel, con `VITE_STOCKIA_API_URL=https://<api>/api/v1` |
-
 ---
 
 ## 9. Pendientes / simulaciones
 
-- Pagos (Stripe/PayPal) y envío de alertas por WhatsApp/email están **simulados** detrás de
-  interfaces (`IPaymentGateway`, `INotificationSender`); se reemplazan sin tocar el dominio.
+- Pagos (Stripe/PayPal), WhatsApp y correo están **simulados** detrás de interfaces (`IPaymentGateway`,
+  `INotificationSender`); se reemplazan sin tocar el dominio. El correo de recuperación se registra en el log
+  (y en modo demo se devuelve en la respuesta).
 - Sensores IoT del plan "IoT Completo": fuera del alcance de esta versión.
+- Descartados por el equipo (un solo restaurante): Gamification Engine, Multi-Branch Consolidator y Account
+  Deactivation Component del C4.

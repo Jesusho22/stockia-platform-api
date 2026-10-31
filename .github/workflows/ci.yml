@@ -120,9 +120,11 @@ jobs:
       - name: Web Application end-to-end tests (Playwright)
         if: steps.webapp.outcome == 'success'
         run: |
-          pip install playwright==1.55.0
-          python -m playwright install --with-deps chromium
-          python tests/e2e/webapp_e2e.py http://localhost:4173
+          set -o pipefail
+          report() { tail -n 25 "$1" | sed 's/::/ /g' | while IFS= read -r line; do echo "::error title=$2::$line"; done; }
+          pip install playwright==1.55.0 > e2e-setup.log 2>&1 || { report e2e-setup.log "pip install playwright"; exit 1; }
+          python -m playwright install --with-deps chromium >> e2e-setup.log 2>&1 || { report e2e-setup.log "playwright install"; exit 1; }
+          python tests/e2e/webapp_e2e.py http://localhost:4173 2>&1 | tee e2e.log || { report e2e.log "Web App e2e output"; exit 1; }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -130,6 +132,8 @@ jobs:
           path: |
             api.log
             webapp.log
+            e2e.log
+            e2e-setup.log
             tests/e2e/screenshots/
           if-no-files-found: ignore
       - name: API log
