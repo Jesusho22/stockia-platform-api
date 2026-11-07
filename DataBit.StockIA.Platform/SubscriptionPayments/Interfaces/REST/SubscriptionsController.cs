@@ -10,7 +10,6 @@ using DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.Queries;
 using DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.ValueObjects;
 using DataBit.StockIA.Platform.SubscriptionPayments.Interfaces.REST.Resources;
 using DataBit.StockIA.Platform.SubscriptionPayments.Interfaces.REST.Transform;
-using Microsoft.AspNetCore.Authorization;
 
 namespace DataBit.StockIA.Platform.SubscriptionPayments.Interfaces.REST;
 
