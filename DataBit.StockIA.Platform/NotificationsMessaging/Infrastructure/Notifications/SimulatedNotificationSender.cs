@@ -1,9 +1,8 @@
-using DataBit.StockIA.Platform.NotificationsMessaging.Application.Internal.OutboundServices;
+﻿using DataBit.StockIA.Platform.NotificationsMessaging.Application.Internal.OutboundServices;
 using DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.ValueObjects;
 
 namespace DataBit.StockIA.Platform.NotificationsMessaging.Infrastructure.Notifications;
 
-/// <summary>Simulated WhatsApp / email delivery: always succeeds and logs the message.</summary>
 public class SimulatedNotificationSender(ILogger<SimulatedNotificationSender> logger) : INotificationSender
 {
     public bool IsSimulated => true;

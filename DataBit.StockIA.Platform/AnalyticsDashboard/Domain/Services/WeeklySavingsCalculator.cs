@@ -1,20 +1,9 @@
-using DataBit.StockIA.Platform.AnalyticsDashboard.Domain.Model.ValueObjects;
-using DataBit.StockIA.Platform.Shared.Domain.Model.ValueObjects;
+﻿using DataBit.StockIA.Platform.AnalyticsDashboard.Domain.Model.ValueObjects;
 
 namespace DataBit.StockIA.Platform.AnalyticsDashboard.Domain.Services;
 
-/// <summary>
-///     Weekly Savings Calculator (C4). The week is the last 7 days including
-///     today, compared with the 7 days before.
-///     <list type="bullet">
-///         <item>Rescued value: stock used by sales when its lot had at most <see cref="RescueWindowDays" /> days left.</item>
-///         <item>Waste value: lots that expired during the week while still holding stock.</item>
-///         <item>Estimated savings = rescued value + reduction of the waste against the previous week (only when it went down).</item>
-///     </list>
-/// </summary>
 public static class WeeklySavingsCalculator
 {
-    /// <summary>Same window as the "expiring soon" status of Stock Management.</summary>
     public const int RescueWindowDays = 3;
 
     public const int WeekDays = 7;
@@ -66,7 +55,6 @@ public static class WeeklySavingsCalculator
         consumptions.Where(entry => entry.ConsumedOn >= from && entry.ConsumedOn <= to &&
                                     entry.DaysBeforeExpiration is >= 0 and <= RescueWindowDays);
 
-    /// <summary>A lot is lost the day after its expiration date (its last usable day).</summary>
     private static IEnumerable<LotSnapshot> ExpiredBetween(IEnumerable<LotSnapshot> lots, DateOnly from, DateOnly to) =>
         lots.Where(lot => lot.Quantity > 0 && lot.ExpirationDate.AddDays(1) >= from && lot.ExpirationDate.AddDays(1) <= to);
 

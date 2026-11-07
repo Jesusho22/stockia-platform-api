@@ -1,11 +1,12 @@
-using System.Net.Mime;
-using Microsoft.AspNetCore.Mvc;
+﻿using System.Net.Mime;
 using DataBit.StockIA.Platform.AnalyticsDashboard.Application.Services;
 using DataBit.StockIA.Platform.AnalyticsDashboard.Domain.Model.Queries;
 using DataBit.StockIA.Platform.AnalyticsDashboard.Interfaces.REST.Resources;
 using DataBit.StockIA.Platform.AnalyticsDashboard.Interfaces.REST.Transform;
-using DataBit.StockIA.Platform.Iam.Infrastructure.Pipeline.Middleware.Attributes;
 using DataBit.StockIA.Platform.Shared.Application;
+using DataBit.StockIA.Platform.Iam.Infrastructure.Pipeline.Middleware.Attributes;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace DataBit.StockIA.Platform.AnalyticsDashboard.Interfaces.REST;
 

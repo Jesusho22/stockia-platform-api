@@ -1,4 +1,4 @@
-using DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.Aggregates;
+﻿using DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.Aggregates;
 using DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.Commands;
 using DataBit.StockIA.Platform.Shared.Application.Patterns;
 
@@ -12,4 +12,5 @@ public interface IAlertCommandService
     Task<Result<Alert>> Handle(AcknowledgeAlertCommand command, CancellationToken cancellationToken);
     Task<Result<Alert>> Handle(RetryAlertDeliveryCommand command, CancellationToken cancellationToken);
     Task<int> Handle(EvaluateInventoryAlertsCommand command, CancellationToken cancellationToken);
+
 }

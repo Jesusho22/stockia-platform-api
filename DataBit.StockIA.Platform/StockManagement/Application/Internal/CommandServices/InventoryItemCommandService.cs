@@ -13,7 +13,6 @@ using DataBit.StockIA.Platform.StockManagement.Domain.Model.ValueObjects;
 using DataBit.StockIA.Platform.StockManagement.Domain.Repositories;
 using DataBit.StockIA.Platform.StockManagement.Domain.Services;
 using DataBit.StockIA.Platform.StockManagement.Resources;
-using DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.Aggregates;
 
 namespace DataBit.StockIA.Platform.StockManagement.Application.Internal.CommandServices;
 

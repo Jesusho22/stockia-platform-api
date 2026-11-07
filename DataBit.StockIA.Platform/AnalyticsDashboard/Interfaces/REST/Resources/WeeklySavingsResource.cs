@@ -1,10 +1,8 @@
-using DataBit.StockIA.Platform.Shared.Domain.Model.ValueObjects;
-
+﻿using DataBit.StockIA.Platform.Shared.Domain.Model.ValueObjects;
 namespace DataBit.StockIA.Platform.AnalyticsDashboard.Interfaces.REST.Resources;
 
 public record SavingsLineResource(string ItemName, string Unit, decimal Quantity, decimal Value);
 
-/// <summary>Weekly savings (soles). from/to as yyyy-MM-dd in the restaurant time zone.</summary>
 public record WeeklySavingsResource(
     string From,
     string To,

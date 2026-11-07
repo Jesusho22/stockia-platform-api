@@ -1,4 +1,4 @@
-using DataBit.StockIA.Platform.NotificationsMessaging.Application.Services;
+﻿using DataBit.StockIA.Platform.NotificationsMessaging.Application.Services;
 using DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.Aggregates;
 using DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.Queries;
 using DataBit.StockIA.Platform.NotificationsMessaging.Domain.Repositories;

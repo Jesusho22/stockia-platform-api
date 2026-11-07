@@ -1,5 +1,4 @@
-using Microsoft.Extensions.Localization;
-using DataBit.StockIA.Platform.NotificationsMessaging.Application.Errors;
+﻿using DataBit.StockIA.Platform.NotificationsMessaging.Application.Errors;
 using DataBit.StockIA.Platform.NotificationsMessaging.Application.Internal.OutboundServices;
 using DataBit.StockIA.Platform.NotificationsMessaging.Application.Services;
 using DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.Aggregates;
@@ -12,6 +11,7 @@ using DataBit.StockIA.Platform.Shared.Application.Patterns;
 using DataBit.StockIA.Platform.Shared.Domain.Model.ValueObjects;
 using DataBit.StockIA.Platform.Shared.Domain.Repositories;
 using DataBit.StockIA.Platform.StockManagement.Interfaces.ACL;
+using Microsoft.Extensions.Localization;
 
 namespace DataBit.StockIA.Platform.NotificationsMessaging.Application.Internal.CommandServices;
 

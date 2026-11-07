@@ -1,10 +1,12 @@
-using DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.ValueObjects;
+﻿using DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.ValueObjects;
 
 namespace DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.Commands;
 
-public record CreateAlertCommand(int RestaurantId, AlertType Type, AlertSeverity Severity, string Message, AlertChannel Channel);
+public record CreateAlertCommand(int RestaurantId, AlertType Type, AlertSeverity Severity, 
+    string Message, AlertChannel Channel);
 
-public record UpdateAlertCommand(int AlertId, int RestaurantId, AlertType Type, AlertSeverity Severity, string Message, AlertChannel Channel);
+public record UpdateAlertCommand(int AlertId, int RestaurantId, AlertType Type, AlertSeverity Severity, 
+    string Message, AlertChannel Channel);
 
 public record DeleteAlertCommand(int AlertId, int RestaurantId);
 

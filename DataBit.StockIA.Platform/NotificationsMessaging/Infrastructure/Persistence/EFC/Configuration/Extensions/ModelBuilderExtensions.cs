@@ -1,6 +1,6 @@
-using Microsoft.EntityFrameworkCore;
-using DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.Aggregates;
+﻿using DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.Aggregates;
 using DataBit.StockIA.Platform.Shared.Infrastructure.Persistence.EFC.Configuration.Extensions;
+using Microsoft.EntityFrameworkCore;
 
 namespace DataBit.StockIA.Platform.NotificationsMessaging.Infrastructure.Persistence.EFC.Configuration.Extensions;
 

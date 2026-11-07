@@ -1,6 +1,5 @@
 using DataBit.StockIA.Platform.Shared.Domain.Model.ValueObjects;
 using DataBit.StockIA.Platform.StockManagement.Domain.Model.ValueObjects;
-using DataBit.StockIA.Platform.StockManagement.Domain.Services;
 
 namespace DataBit.StockIA.Platform.StockManagement.Domain.Model.Commands;
 
