@@ -1,4 +1,4 @@
-namespace DataBit.StockIA.Platform.SubscriptionPayments.Resources;
+﻿namespace DataBit.StockIA.Platform.SubscriptionPayments.Resources;
 
 /// <summary>
 ///     Marker for IStringLocalizer&lt;SubscriptionPaymentsMessages&gt;: messages of the Subscription &amp; Payments bounded context

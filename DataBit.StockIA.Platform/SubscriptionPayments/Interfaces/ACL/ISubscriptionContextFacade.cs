@@ -1,4 +1,4 @@
-namespace DataBit.StockIA.Platform.SubscriptionPayments.Interfaces.ACL;
+﻿namespace DataBit.StockIA.Platform.SubscriptionPayments.Interfaces.ACL;
 
 /// <summary>What other bounded contexts may ask Subscription &amp; Billing.</summary>
 public interface ISubscriptionContextFacade

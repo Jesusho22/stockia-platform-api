@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using DataBit.StockIA.Platform.Shared.Infrastructure.Persistence.EFC.Configuration;
 using DataBit.StockIA.Platform.Shared.Infrastructure.Persistence.EFC.Repositories;
 using DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.Aggregates;

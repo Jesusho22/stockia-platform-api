@@ -1,6 +1,5 @@
-namespace DataBit.StockIA.Platform.NotificationsMessaging.Interfaces.ACL;
+﻿namespace DataBit.StockIA.Platform.NotificationsMessaging.Interfaces.ACL;
 
-/// <summary>What other bounded contexts may ask Notifications &amp; Messaging.</summary>
 public interface INotificationsMessagingContextFacade
 {
     Task<int> CountPendingAlerts(int restaurantId, CancellationToken cancellationToken);

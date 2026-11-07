@@ -1,4 +1,4 @@
-namespace DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.ValueObjects;
+﻿namespace DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.ValueObjects;
 
 public enum AlertType
 {

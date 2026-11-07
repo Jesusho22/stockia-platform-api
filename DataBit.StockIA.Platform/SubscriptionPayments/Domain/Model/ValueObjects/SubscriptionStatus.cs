@@ -1,4 +1,4 @@
-namespace DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.ValueObjects;
+﻿namespace DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.ValueObjects;
 
 public enum SubscriptionStatus
 {

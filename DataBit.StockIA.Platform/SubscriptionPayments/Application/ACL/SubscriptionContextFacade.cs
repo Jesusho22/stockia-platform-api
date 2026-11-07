@@ -1,4 +1,4 @@
-using DataBit.StockIA.Platform.SubscriptionPayments.Application.Services;
+﻿using DataBit.StockIA.Platform.SubscriptionPayments.Application.Services;
 using DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.Commands;
 using DataBit.StockIA.Platform.SubscriptionPayments.Interfaces.ACL;
 

@@ -13,7 +13,7 @@ namespace DataBit.StockIA.Platform.Shared.Infrastructure.Persistence.EFC.Configu
 
 /// <summary>
 ///     Single DbContext of the platform (modular monolith over one MySQL
-///     database). Each bounded context adds its own Apply...Configuration;
+///     database). Each bounded context adds its own Apply...Configuration,
 ///     the schema is created by the EF Core migrations in ../Migrations.
 /// </summary>
 public class AppDbContext(DbContextOptions options) : DbContext(options)

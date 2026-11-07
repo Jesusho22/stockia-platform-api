@@ -1,4 +1,4 @@
-using DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.Aggregates;
+﻿using DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.Aggregates;
 using DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.Queries;
 
 namespace DataBit.StockIA.Platform.SubscriptionPayments.Application.Services;

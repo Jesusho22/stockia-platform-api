@@ -1,3 +1,3 @@
-namespace DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.Queries;
+﻿namespace DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.Queries;
 
 public record GetAllPlansQuery;

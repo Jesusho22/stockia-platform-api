@@ -1,4 +1,4 @@
-namespace DataBit.StockIA.Platform.SubscriptionPayments.Application.Errors;
+﻿namespace DataBit.StockIA.Platform.SubscriptionPayments.Application.Errors;
 
 public enum SubscriptionPaymentsError
 {

@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.ValueObjects;
 
 namespace DataBit.StockIA.Platform.SubscriptionPayments.Interfaces.REST.Resources;

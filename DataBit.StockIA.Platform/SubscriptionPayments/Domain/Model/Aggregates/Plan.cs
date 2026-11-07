@@ -1,4 +1,4 @@
-namespace DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.Aggregates;
+﻿namespace DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.Aggregates;
 
 /// <summary>
 ///     A plan of the catalog (Esencial, Profesional, IoT Completo).

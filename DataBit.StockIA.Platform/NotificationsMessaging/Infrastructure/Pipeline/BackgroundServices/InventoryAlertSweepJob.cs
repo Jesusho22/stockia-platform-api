@@ -1,13 +1,9 @@
-using DataBit.StockIA.Platform.NotificationsMessaging.Application.Services;
+﻿using DataBit.StockIA.Platform.NotificationsMessaging.Application.Services;
 using DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.Commands;
 using DataBit.StockIA.Platform.RestaurantRegistration.Interfaces.ACL;
 
 namespace DataBit.StockIA.Platform.NotificationsMessaging.Infrastructure.Pipeline.BackgroundServices;
 
-/// <summary>
-///     Lots expire just by the passage of time (no event fires for that), so
-///     every hour the automatic alerts of every restaurant are re-evaluated.
-/// </summary>
 public class InventoryAlertSweepJob(IServiceScopeFactory scopeFactory, IConfiguration configuration, ILogger<InventoryAlertSweepJob> logger)
     : BackgroundService
 {

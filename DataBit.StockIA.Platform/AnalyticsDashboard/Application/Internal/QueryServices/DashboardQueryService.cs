@@ -1,4 +1,4 @@
-using DataBit.StockIA.Platform.AnalyticsDashboard.Application.Services;
+﻿using DataBit.StockIA.Platform.AnalyticsDashboard.Application.Services;
 using DataBit.StockIA.Platform.AnalyticsDashboard.Domain.Model.Queries;
 using DataBit.StockIA.Platform.AnalyticsDashboard.Domain.Model.ValueObjects;
 using DataBit.StockIA.Platform.AnalyticsDashboard.Domain.Services;
@@ -11,11 +11,6 @@ using DataBit.StockIA.Platform.StockManagement.Interfaces.ACL;
 
 namespace DataBit.StockIA.Platform.AnalyticsDashboard.Application.Internal.QueryServices;
 
-/// <summary>
-///     Analytics &amp; Dashboard has no aggregates of its own: it composes the
-///     other bounded contexts through their ACL facades (Metrics View Updater,
-///     Alerts Panel, Demand Prediction View and Weekly Savings Calculator).
-/// </summary>
 public class DashboardQueryService(
     IStockManagementContextFacade stockManagementContextFacade,
     IRecipesManagementContextFacade recipesManagementContextFacade,

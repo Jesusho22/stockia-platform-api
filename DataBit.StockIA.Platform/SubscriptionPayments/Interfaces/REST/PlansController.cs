@@ -1,9 +1,10 @@
-using System.Net.Mime;
+﻿using System.Net.Mime;
 using Microsoft.AspNetCore.Mvc;
 using DataBit.StockIA.Platform.Iam.Infrastructure.Pipeline.Middleware.Attributes;
 using DataBit.StockIA.Platform.SubscriptionPayments.Application.Services;
 using DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.Queries;
 using DataBit.StockIA.Platform.SubscriptionPayments.Interfaces.REST.Transform;
+using Microsoft.AspNetCore.Authorization;
 
 namespace DataBit.StockIA.Platform.SubscriptionPayments.Interfaces.REST;
 

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using DataBit.StockIA.Platform.Shared.Application.Patterns;
 using DataBit.StockIA.Platform.Shared.Domain.Model.ValueObjects;
 using DataBit.StockIA.Platform.Shared.Interfaces.REST;

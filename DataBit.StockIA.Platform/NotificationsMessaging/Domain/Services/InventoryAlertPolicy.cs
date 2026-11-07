@@ -1,10 +1,8 @@
-using System.Globalization;
+﻿using System.Globalization;
 using DataBit.StockIA.Platform.NotificationsMessaging.Domain.Model.ValueObjects;
-using DataBit.StockIA.Platform.Shared.Domain.Model.ValueObjects;
 
 namespace DataBit.StockIA.Platform.NotificationsMessaging.Domain.Services;
 
-/// <summary>Stock data the policy needs (taken from Inventory &amp; Recipe Management).</summary>
 public record StockSnapshot(int InventoryItemId, string Name, string Unit, decimal Quantity, decimal MinThreshold, int DaysToExpire,
     string Status);
 

@@ -1,4 +1,4 @@
-using DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.ValueObjects;
+﻿using DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.ValueObjects;
 
 namespace DataBit.StockIA.Platform.SubscriptionPayments.Interfaces.REST.Resources;
 

@@ -1,4 +1,4 @@
-using DataBit.StockIA.Platform.AnalyticsDashboard.Domain.Model.ValueObjects;
+﻿using DataBit.StockIA.Platform.AnalyticsDashboard.Domain.Model.ValueObjects;
 using DataBit.StockIA.Platform.AnalyticsDashboard.Interfaces.REST.Resources;
 using DataBit.StockIA.Platform.Shared.Domain.Model.ValueObjects;
 

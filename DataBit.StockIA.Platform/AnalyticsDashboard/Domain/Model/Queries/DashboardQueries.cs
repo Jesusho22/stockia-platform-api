@@ -1,4 +1,4 @@
-namespace DataBit.StockIA.Platform.AnalyticsDashboard.Domain.Model.Queries;
+﻿namespace DataBit.StockIA.Platform.AnalyticsDashboard.Domain.Model.Queries;
 
 public record GetDashboardSummaryQuery(int RestaurantId);
 

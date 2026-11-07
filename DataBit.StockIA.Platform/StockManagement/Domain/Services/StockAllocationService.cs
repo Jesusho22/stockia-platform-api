@@ -1,6 +1,6 @@
 using DataBit.StockIA.Platform.Shared.Domain.Model.ValueObjects;
 using DataBit.StockIA.Platform.StockManagement.Domain.Model.Aggregates;
-using DataBit.StockIA.Platform.SubscriptionPayments.Domain.Model.Aggregates;
+using DataBit.StockIA.Platform.StockManagement.Domain.Model.ValueObjects;
 
 namespace DataBit.StockIA.Platform.StockManagement.Domain.Services;
 
@@ -18,12 +18,6 @@ public enum ShortageReason
 }
 
 public record Shortage(string ItemName, string Unit, ShortageReason Reason, Quantity Required, Quantity Available, Quantity Expired);
-
-/// <summary>
-///     What a dish needs from one supply per portion. Sent by Recipes Management
-///     through the ACL; the name and unit find other lots of the same product.
-/// </summary>
-public record StockRequirement(int InventoryItemId, string ItemName, string Unit, Quantity QuantityPerPortion);
 
 public record LotDeduction(InventoryItem Item, Quantity Taken, Quantity Remaining);
 
