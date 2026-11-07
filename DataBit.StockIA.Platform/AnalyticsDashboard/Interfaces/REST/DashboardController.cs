@@ -5,7 +5,6 @@ using DataBit.StockIA.Platform.AnalyticsDashboard.Interfaces.REST.Resources;
 using DataBit.StockIA.Platform.AnalyticsDashboard.Interfaces.REST.Transform;
 using DataBit.StockIA.Platform.Shared.Application;
 using DataBit.StockIA.Platform.Iam.Infrastructure.Pipeline.Middleware.Attributes;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DataBit.StockIA.Platform.AnalyticsDashboard.Interfaces.REST;
