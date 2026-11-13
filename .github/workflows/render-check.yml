@@ -24,8 +24,12 @@ jobs:
               pg.locator("input[type=password]").first.fill("stockia123")
               pg.get_by_role("button", name="Sign in").click()
               pg.wait_for_url("**/app/dashboard", timeout=90000)
-              pg.wait_for_timeout(4000)
-              out = ["url: " + B, "dashboard: weekly-savings=" + str(pg.locator("[data-testid=weekly-savings]").count())]
+              try:
+                  pg.wait_for_selector("[data-testid=weekly-savings]", timeout=45000); ws = "OK"
+              except Exception:
+                  ws = "NOT SHOWN"
+              body = pg.inner_text("body")
+              out = ["url: " + B, "dashboard: weekly-savings=" + ws + " | " + body[body.find("Weekly"):body.find("Weekly")+120].replace("\n"," ")]
               for path, needle in [("inventory", "Pechuga de pollo"), ("recipes", "Lomo Saltado"), ("sales", "Lomo"),
                                    ("forecast", "ML model"), ("alerts", "Alerts"), ("recommendations", "recommendations"),
                                    ("roles", "Carla"), ("settings", "Account settings"), ("settings/plans", "Profesional")]:
@@ -41,4 +45,4 @@ jobs:
               b.close()
           EOF
           python walk.py | tee walk.txt
-          while IFS= read -r l; do echo "::notice title=walk::$l"; done < walk.txt
+          echo "::notice title=walk::$(tr '\n' '|' < walk.txt)"
