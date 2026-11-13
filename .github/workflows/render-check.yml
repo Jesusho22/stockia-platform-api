@@ -1,0 +1,50 @@
+name: Render API check
+on: [push]
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Wake up Render
+        run: |
+          for i in $(seq 1 20); do curl -s -m 30 https://stockia-platform-api.onrender.com/api/v1/health | grep -q '"ok"' && break; sleep 10; done
+      - name: Build the team webapp develop as Vercel does
+        run: |
+          git clone -q --branch develop https://github.com/upc-pre-202620-1asi0730-16127-databit/stockia-webapp webapp
+          cd webapp && git log -1 --format="::notice title=webapp commit::%h %s"
+          npm install --no-audit --no-fund > /dev/null 2>&1
+          npm run build 2>&1 | tail -3
+          (npx vite preview --port 4173 --strictPort > ../preview.log 2>&1 &)
+          sleep 5
+      - name: Read-only browser walk against Render
+        run: |
+          pip install -q playwright==1.55.0 && python -m playwright install --with-deps chromium > /dev/null 2>&1
+          cat > walk.py <<'EOF'
+          from playwright.sync_api import sync_playwright
+          B = "http://localhost:4173"
+          with sync_playwright() as p:
+              b = p.chromium.launch(); pg = b.new_page()
+              api = set()
+              pg.on("request", lambda r: api.add(r.url.split("/api/v1")[0]) if "/api/v1" in r.url else None)
+              errors = []
+              pg.on("console", lambda m: errors.append(m.text[:150]) if m.type == "error" else None)
+              pg.goto(B + "/auth/sign-in")
+              pg.get_by_label("Email").fill("admin@databitecorp.com")
+              pg.locator("input[type=password]").first.fill("stockia123")
+              pg.get_by_role("button", name="Sign in").click()
+              pg.wait_for_url("**/app/dashboard", timeout=90000)
+              pg.wait_for_timeout(4000)
+              out = ["dashboard: weekly-savings=" + str(pg.locator("[data-testid=weekly-savings]").count())]
+              for path, needle in [("inventory", "Pechuga de pollo"), ("recipes", "Lomo Saltado"), ("sales", "Lomo"),
+                                   ("forecast", "ML model"), ("alerts", "Alerts"), ("recommendations", "recommendations"),
+                                   ("roles", "Carla"), ("settings", "Account settings"), ("settings/plans", "Profesional")]:
+                  pg.goto(B + "/app/" + path); pg.wait_for_timeout(3500)
+                  txt = pg.inner_text("body")
+                  out.append(f"{path}: {'OK' if needle.lower() in txt.lower() else 'MISSING ' + needle}")
+              out.append("menu tag: " + ("StockIA Platform API" if "StockIA Platform API" in pg.inner_text("body") else "?"))
+              out.append("api hosts: " + ", ".join(sorted(api)))
+              out.append("console errors: " + str(len(errors)) + " " + " | ".join(errors[:3]))
+              print("\n".join(out))
+              b.close()
+          EOF
+          python walk.py | tee walk.txt
+          while IFS= read -r l; do echo "::notice title=walk::$l"; done < walk.txt

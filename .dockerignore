@@ -1,9 +1,0 @@
-**/bin/
-**/obj/
-.git/
-.github/
-.idea/
-.vs/
-ml/data/
-ml/.venv/
-**/__pycache__/
